@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090b0b" />
+    <meta name="description" content="YOU ARE NOT ALONE — a first-person browser horror game." />
+    <title>YOU ARE NOT ALONE</title>
+  </head>
+  <body>
+    <main id="app" aria-label="YOU ARE NOT ALONE">
+      <canvas id="game-canvas" aria-label="3D game world" tabindex="0"></canvas>
+      <div class="film-grain" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <div id="travel-transition" class="travel-transition" hidden aria-live="polite">
+        <p id="travel-transition-copy"></p>
+      </div>
+
+      <section id="title-screen" class="screen title-screen">
+        <div class="title-backdrop" aria-hidden="true">
+          <div class="title-window"><span></span><span></span><span></span></div>
+          <div class="title-shadow"></div>
+          <div class="title-floor"></div>
+          <div class="title-dust"></div>
+        </div>
+        <div class="title-copy">
+          <p class="eyebrow">A PLEYZ ORIGINAL</p>
+          <h1>YOU ARE<br /><span>NOT ALONE</span></h1>
+          <p class="title-subtitle">Some houses remember who lived in them.</p>
+          <div class="title-actions">
+            <button id="start-button" class="primary-button">Enter the house <span>↗</span></button>
+            <button id="continue-button" class="text-button" hidden>Continue</button>
+          </div>
+          <p class="title-footnote">A first-person psychological horror experience</p>
+        </div>
+        <div class="title-meta"><span>EPISODE ONE</span><span>HEADPHONES RECOMMENDED</span></div>
+      </section>
+
+      <section id="hud" class="hud" hidden aria-live="polite">
+        <header class="hud-header">
+          <div class="day-marker"><span class="day-dot"></span><span id="day-label">DAY 1 · EVENING</span></div>
+          <button id="pause-button" class="icon-button" aria-label="Pause game">Ⅱ</button>
+        </header>
+        <div class="objective-card">
+          <p class="eyebrow">CURRENT OBJECTIVE</p>
+          <p id="objective-text">Take a moment to look around.</p>
+        </div>
+        <div id="interaction-prompt" class="interaction-prompt" hidden>
+          <kbd id="interaction-key">E</kbd><span id="interaction-label"></span>
+        </div>
+        <div id="crosshair" class="crosshair" aria-hidden="true"><span></span><i></i></div>
+        <div id="toast" class="toast" role="status" hidden></div>
+        <div class="controls-hint">WASD MOVE <span>·</span> MOVE MOUSE LOOK <span>·</span> E INTERACT</div>
+        <div id="mobile-controls" class="mobile-controls" hidden>
+          <div id="move-pad" class="move-pad" aria-label="Movement joystick"><div class="move-knob"></div></div>
+          <button id="mobile-interact" class="mobile-interact" aria-label="Interact">E</button>
+        </div>
+      </section>
+
+      <section id="dialogue-panel" class="dialogue-panel" hidden aria-live="assertive">
+        <div class="dialogue-rule"></div>
+        <p id="dialogue-speaker" class="dialogue-speaker"></p>
+        <p id="dialogue-text" class="dialogue-text"></p>
+        <div id="dialogue-choices" class="dialogue-choices"></div>
+        <button id="dialogue-continue" class="dialogue-continue">Continue <span>↵</span></button>
+      </section>
+
+      <section id="pause-screen" class="screen pause-screen" hidden>
+        <div class="pause-card">
+          <p class="eyebrow">TAKE A BREATH</p>
+          <h2>Paused</h2>
+          <p>Your progress is saved locally at safe moments.</p>
+          <button id="resume-button" class="primary-button">Return to the house <span>↗</span></button>
+          <button id="save-button" class="text-button">Save checkpoint</button>
+        </div>
+      </section>
+
+      <section id="inspection-panel" class="inspection-panel" hidden>
+        <p class="eyebrow">OBSERVATION</p>
+        <h2 id="inspection-title"></h2>
+        <p id="inspection-text"></p>
+        <button id="inspection-close" class="text-button">Close <span>ESC</span></button>
+      </section>
+
+      <section id="ending-screen" class="screen ending-screen" hidden aria-live="assertive">
+        <div class="ending-card">
+          <p class="eyebrow">EPISODE ONE · END</p>
+          <h2 id="ending-title">THE OPEN DOOR</h2>
+          <p id="ending-copy"></p>
+          <button id="ending-replay" class="primary-button">Begin again <span>↗</span></button>
+        </div>
+      </section>
+
+      <div id="screen-reader-status" class="sr-only" aria-live="polite"></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

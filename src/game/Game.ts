@@ -1,0 +1,403 @@
+import * as THREE from "three";
+import type { Conversation, DayPhase, StorySnapshot } from "./types";
+import { EpisodeOne, type EpisodeEnding } from "./content/EpisodeOne";
+import { AudioSystem } from "./systems/AudioSystem";
+import { CharacterSystem } from "./systems/CharacterSystem";
+import { CinematicSystem } from "./systems/CinematicSystem";
+import { DialogueSystem } from "./systems/DialogueSystem";
+import { EnvironmentSystem } from "./systems/EnvironmentSystem";
+import { EventDirector } from "./systems/EventDirector";
+import { InteractionSystem } from "./systems/InteractionSystem";
+import { SaveSystem } from "./systems/SaveSystem";
+import { INITIAL_PLAYER, StoryState } from "./systems/StoryState";
+import { buildHouseDemo } from "./world/HouseDemo";
+import { Player } from "./world/Player";
+
+const PHASE_LABEL: Record<DayPhase, string> = {
+  morning: "MORNING",
+  afternoon: "AFTERNOON",
+  evening: "EVENING",
+  night: "NIGHT",
+};
+
+export class Game {
+  private readonly renderer: THREE.WebGLRenderer;
+  private readonly player: Player;
+  private readonly story = new StoryState();
+  private readonly saves = new SaveSystem();
+  private readonly audio = new AudioSystem();
+  private readonly environment = new EnvironmentSystem(this.audio);
+  private readonly cinematics = new CinematicSystem();
+  private readonly dialogues = new DialogueSystem();
+  private readonly world;
+  private readonly events = new EventDirector(this.story);
+  private readonly characters: CharacterSystem;
+  private episode!: EpisodeOne;
+  private readonly interactions: InteractionSystem;
+  private readonly title = required<HTMLElement>("#title-screen");
+  private readonly hud = required<HTMLElement>("#hud");
+  private readonly pauseScreen = required<HTMLElement>("#pause-screen");
+  private readonly inspectionPanel = required<HTMLElement>("#inspection-panel");
+  private readonly dayLabel = required<HTMLElement>("#day-label");
+  private readonly objectiveText = required<HTMLElement>("#objective-text");
+  private readonly toast = required<HTMLElement>("#toast");
+  private readonly screenReaderStatus = required<HTMLElement>("#screen-reader-status");
+  private readonly travelTransition = required<HTMLElement>("#travel-transition");
+  private readonly travelTransitionCopy = required<HTMLElement>("#travel-transition-copy");
+  private readonly endingScreen = required<HTMLElement>("#ending-screen");
+  private readonly endingTitle = required<HTMLElement>("#ending-title");
+  private readonly endingCopy = required<HTMLElement>("#ending-copy");
+  private readonly inspectTitle = required<HTMLElement>("#inspection-title");
+  private readonly inspectText = required<HTMLElement>("#inspection-text");
+  private readonly startButton = required<HTMLButtonElement>("#start-button");
+  private readonly continueButton = required<HTMLButtonElement>("#continue-button");
+  private readonly pauseButton = required<HTMLButtonElement>("#pause-button");
+  private readonly resumeButton = required<HTMLButtonElement>("#resume-button");
+  private readonly saveButton = required<HTMLButtonElement>("#save-button");
+  private readonly inspectCloseButton = required<HTMLButtonElement>("#inspection-close");
+  private readonly endingReplayButton = required<HTMLButtonElement>("#ending-replay");
+  private isPlaying = false;
+  private toastTimeout = 0;
+  private autosaveTime = 0;
+  private elapsed = 0;
+  private lastFrame = 0;
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: false,
+      powerPreference: "high-performance",
+    });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.2;
+    this.renderer.shadowMap.enabled = !window.matchMedia("(pointer: coarse)").matches;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+
+    this.player = new Player(
+      canvas,
+      () => this.interactions?.clearFocus(),
+      () => this.pause(),
+    );
+    this.world = buildHouseDemo(
+      this.environment,
+      (open) => {
+        this.story.setFlag("foundation.hallDoorOpen", open);
+        this.saveCheckpoint(false);
+      },
+      () => Math.abs(this.player.position.x) < 1.2 && Math.abs(this.player.position.z + 4.9) < 0.7,
+      () => Math.abs(this.player.position.x) < 1.2 && Math.abs(this.player.position.z + 12.08) < 0.7,
+      (id) => this.episode?.interact(id),
+      () => this.story.hasFlag("episode.rescueReady") && this.story.hasFlag("episode.stoneFound"),
+      () => Math.abs(this.player.position.x) < 1.3 && Math.abs(this.player.position.z - 6) < 0.6,
+    );
+    window.addEventListener("game:back-room-door", (event) => {
+      const open = (event as CustomEvent<boolean>).detail;
+      this.story.setFlag("foundation.backRoomDoorOpen", open);
+      this.saveCheckpoint(false);
+    });
+    this.characters = new CharacterSystem(this.world.scene);
+    const housemate = this.world.characters[0];
+    const tenant = this.world.characters[1];
+    if (housemate) this.characters.register({ id: "housemate", object: housemate });
+    if (tenant) this.characters.register({ id: "tenant", object: tenant });
+    this.interactions = new InteractionSystem(this.player.camera, this.world.scene);
+    this.world.interactables.forEach((target) => this.interactions.register(target));
+    this.episode = new EpisodeOne({
+      events: this.events,
+      story: this.story,
+      player: this.player,
+      characters: this.characters,
+      cinematics: this.cinematics,
+      world: this.world,
+      playTone: (frequency, duration, volume) => this.audio.playTone(frequency, duration, volume),
+      setObjective: (objective) => this.setObjective(objective),
+      showToast: (message) => this.showToast(message),
+      saveCheckpoint: () => this.saveCheckpoint(false),
+      transition: (message) => this.showTravelTransition(message),
+      showEnding: (ending) => this.showEnding(ending),
+    });
+    this.setupUi();
+    this.resize();
+    window.addEventListener("resize", () => this.resize());
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "KeyE" && this.canInteract()) this.interactions.interact();
+      if (event.code === "Escape") this.handleEscape();
+    });
+    window.addEventListener("game:inspect", (event) => this.openInspection(event as CustomEvent));
+    window.addEventListener("game:dialogue", (event) => this.openDialogue(event as CustomEvent));
+    this.story.subscribe((snapshot) => this.renderStory(snapshot));
+  }
+
+  private showTravelTransition(message: string): void {
+    this.travelTransitionCopy.textContent = message;
+    this.travelTransition.hidden = false;
+    this.travelTransition.classList.remove("travel-transition");
+    void this.travelTransition.offsetWidth;
+    this.travelTransition.classList.add("travel-transition");
+    window.setTimeout(() => {
+      this.travelTransition.hidden = true;
+    }, 3300);
+  }
+
+  start(): void {
+    this.continueButton.hidden = !this.saves.hasSave();
+    this.startButton.addEventListener("click", () => {
+      this.player.setLookEnabled(true);
+      this.player.requestPointerLock();
+      void this.beginNewGame();
+    });
+    this.continueButton.addEventListener("click", () => {
+      this.player.setLookEnabled(true);
+      this.player.requestPointerLock();
+      void this.continueGame();
+    });
+    this.pauseButton.addEventListener("click", () => this.pause());
+    this.resumeButton.addEventListener("click", () => this.resume());
+    this.saveButton.addEventListener("click", () => this.saveCheckpoint());
+    this.inspectCloseButton.addEventListener("click", () => this.closeInspection());
+    this.endingReplayButton.addEventListener("click", () => {
+      this.endingScreen.hidden = true;
+      void this.beginNewGame();
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Escape" && !this.inspectionPanel.hidden) this.closeInspection();
+    });
+    window.addEventListener("beforeunload", () => {
+      if (this.isPlaying && !this.dialogues.isActive && !this.cinematics.active) this.saveCheckpoint();
+    });
+    this.lastFrame = performance.now();
+    requestAnimationFrame(this.frame);
+  }
+
+  private readonly frame = (now: number): void => {
+    const delta = Math.min((now - this.lastFrame) / 1000, 0.05);
+    this.lastFrame = now;
+    this.world.update(delta);
+
+    if (this.isPlaying && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
+      this.elapsed += delta;
+      this.player.update(
+        delta,
+        !this.dialogues.isActive && !this.cinematics.active,
+        this.world.canOccupy,
+        this.world.floorAt,
+      );
+      if (!this.cinematics.active && !this.dialogues.isActive) {
+        this.interactions.update();
+        this.events.update(this.player.position);
+      } else {
+        this.interactions.clearFocus();
+      }
+      if (!this.dialogues.isActive && !this.cinematics.active) {
+        this.autosaveTime += delta;
+        if (this.autosaveTime > 55) this.saveCheckpoint(false);
+      }
+      this.characters.update(delta, this.elapsed);
+    }
+
+    this.cinematics.update(delta);
+    this.episode.update(delta);
+    this.environment.update(delta, this.elapsed);
+    this.renderer.render(this.world.scene, this.player.camera);
+    requestAnimationFrame(this.frame);
+  };
+
+  private async beginNewGame(): Promise<void> {
+    this.saves.clear();
+    this.story.reset();
+    this.events.reset();
+    this.world.setDoorOpen(false);
+    this.world.setBackRoomDoorOpen(false);
+    this.world.setBedroomDoorOpen(false);
+    this.world.setFinalDoorOpen(false);
+    this.world.setEntryDoorOpen(false);
+    this.world.setWestStoreOpen(false);
+    this.world.setTenantStudyOpen(false);
+    this.world.setMaraRoomAvailable(false);
+    this.world.setMaraRoomDoorOpen(false);
+    this.world.entity.visible = false;
+    this.world.setFinaleFlicker(false);
+    this.world.setEntityReveal(0);
+    this.characters.place("housemate", new THREE.Vector3(0.88, 0, -7.25), 0);
+    this.characters.despawn("housemate");
+    this.characters.place("tenant", new THREE.Vector3(-1.5, 0, 3.1), 0);
+    this.characters.spawn("tenant");
+    this.player.restore(INITIAL_PLAYER);
+    this.endingScreen.hidden = true;
+    this.setObjective("Listen to the opening, then settle into the house.");
+    await this.enterGame();
+    this.episode.start();
+  }
+
+  private async continueGame(): Promise<void> {
+    const snapshot = this.saves.load();
+    if (!snapshot) {
+      this.showToast("No usable checkpoint was found.");
+      this.continueButton.hidden = true;
+      return;
+    }
+    this.story.restore(snapshot);
+    this.player.restore(snapshot.player);
+    this.world.setDoorOpen(snapshot.flags["foundation.hallDoorOpen"] === true);
+    this.world.setBackRoomDoorOpen(snapshot.flags["foundation.backRoomDoorOpen"] === true);
+    this.episode.restore(snapshot);
+    const savedObjective = snapshot.flags["episode.objective"];
+    if (typeof savedObjective === "string") this.setObjective(savedObjective);
+    await this.enterGame();
+    if (!this.story.hasFlag("episode.prologueComplete")) this.episode.start();
+    else this.showToast("You are back where you left off.");
+  }
+
+  private async enterGame(): Promise<void> {
+    this.isPlaying = true;
+    this.title.classList.add("screen-leaving");
+    this.hud.hidden = false;
+    window.setTimeout(() => {
+      this.title.hidden = true;
+      this.title.classList.remove("screen-leaving");
+    }, 750);
+    await this.audio.start();
+    this.player.focusCanvas();
+    this.saveCheckpoint(false);
+  }
+
+  private setupUi(): void {
+    this.dialogues.setActiveChangeHandler((active) => {
+      if (active) {
+        this.player.setLookEnabled(false);
+        this.player.releasePointerLock();
+        this.interactions.clearFocus();
+      } else if (this.isPlaying && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
+        this.player.setLookEnabled(true);
+        this.player.requestPointerLock();
+      }
+    });
+    this.dialogues.setChoiceHandlers((conversationId, choiceId) => {
+      this.story.recordChoice(conversationId, choiceId);
+    }, (key, value) => {
+      this.story.setFlag(key, value);
+    });
+  }
+
+  private openInspection(event: CustomEvent<{ title: string; text: string }>): void {
+    this.inspectTitle.textContent = event.detail.title;
+    this.inspectText.textContent = event.detail.text;
+    this.inspectionPanel.hidden = false;
+    this.interactions.clearFocus();
+    this.player.setLookEnabled(false);
+    this.player.releasePointerLock();
+    this.saveCheckpoint(false);
+  }
+
+  private closeInspection(): void {
+    this.inspectionPanel.hidden = true;
+    if (this.isPlaying && this.pauseScreen.hidden) {
+      this.player.setLookEnabled(true);
+      this.player.requestPointerLock();
+    }
+  }
+
+  private openDialogue(event: CustomEvent<Conversation>): void {
+    this.interactions.clearFocus();
+    this.dialogues.start(event.detail);
+  }
+
+  private pause(): void {
+    if (
+      !this.isPlaying ||
+      !this.pauseScreen.hidden ||
+      this.dialogues.isActive ||
+      this.cinematics.active
+    ) {
+      return;
+    }
+    this.pauseScreen.hidden = false;
+    this.player.setLookEnabled(false);
+    this.player.releasePointerLock();
+    this.interactions.clearFocus();
+    this.saveCheckpoint(false);
+  }
+
+  private resume(): void {
+    this.pauseScreen.hidden = true;
+    this.player.setLookEnabled(true);
+    this.player.focusCanvas();
+    this.player.requestPointerLock();
+  }
+
+  private handleEscape(): void {
+    if (!this.isPlaying || this.dialogues.isActive || !this.inspectionPanel.hidden) return;
+    if (this.pauseScreen.hidden) this.pause();
+    else this.resume();
+  }
+
+  private canInteract(): boolean {
+    return (
+      this.isPlaying &&
+      this.pauseScreen.hidden &&
+      this.inspectionPanel.hidden &&
+      !this.dialogues.isActive &&
+      !this.cinematics.active
+    );
+  }
+
+  private saveCheckpoint(showFeedback = true): void {
+    if (!this.isPlaying) return;
+    this.story.checkpoint(this.player);
+    const succeeded = this.saves.save(this.story.value);
+    this.autosaveTime = 0;
+    if (showFeedback || !succeeded) {
+      this.showToast(succeeded ? "Checkpoint saved." : "Checkpoint could not be saved.");
+    }
+  }
+
+  private renderStory(snapshot: Readonly<StorySnapshot>): void {
+    this.dayLabel.textContent = `DAY ${snapshot.day} · ${PHASE_LABEL[snapshot.phase]}`;
+  }
+
+  private setObjective(text: string): void {
+    this.objectiveText.textContent = text;
+    this.screenReaderStatus.textContent = `New objective: ${text}`;
+    this.story.setFlag("episode.objective", text);
+  }
+
+  private showEnding(ending: EpisodeEnding): void {
+    this.endingTitle.textContent = ending.title;
+    this.endingCopy.textContent = ending.text;
+    this.endingScreen.hidden = false;
+    this.isPlaying = false;
+    this.player.setLookEnabled(false);
+    this.player.releasePointerLock();
+    this.interactions.clearFocus();
+    this.hud.hidden = true;
+  }
+
+  private showToast(text: string): void {
+    this.toast.textContent = text;
+    this.toast.hidden = false;
+    window.clearTimeout(this.toastTimeout);
+    this.toastTimeout = window.setTimeout(() => {
+      this.toast.hidden = true;
+    }, 3600);
+  }
+
+  private resize(): void {
+    const width = Math.max(1, window.innerWidth);
+    const height = Math.max(1, window.innerHeight);
+    const mobile = window.matchMedia("(pointer: coarse)").matches;
+    this.renderer.shadowMap.enabled = !mobile;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.15 : 1.6));
+    this.renderer.setSize(width, height, false);
+    this.player.camera.aspect = width / height;
+    this.player.camera.updateProjectionMatrix();
+  }
+}
+
+function required<T extends HTMLElement>(selector: string): T {
+  const element = document.querySelector<T>(selector);
+  if (!element) throw new Error(`Required game element is missing: ${selector}`);
+  return element;
+}
