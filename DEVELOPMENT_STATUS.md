@@ -19,6 +19,8 @@
 
 ## Validation completed
 
+- GitHub Pages production base path now defaults to `/You-Are-Not-Alone/` while the development server continues to use `/`. Production builds generate HTML that points at assets under this case-sensitive repository path. Inspection of the published page found it still serves the unbuilt `index.html` with `/src/main.ts`, which returns 404; GitHub Pages must deploy the workflow's `dist/` artifact for the game to run.
+- Running the source `index.html` through VS Code Live Server does not build the TypeScript or CSS imports. Start the Vite dev server with `npm run dev` and open its printed local URL.
 - `npm run typecheck` — passed after the complete-door-target correction.
 - `npm run build` — passed; Vite emitted static production assets.
 - `git diff --check` — passed after the source and documentation edits.
@@ -33,7 +35,7 @@
 - Replace or substantially improve primitive procedural furniture and character art before claiming final visual quality. There is no production asset inventory or verified third-party asset license set yet.
 - Refine staged character behavior, animation/expression, environmental changes, sound design, and lighting progression; current custom sounds are limited procedural tones/ambience.
 - Test controls and performance on a physical desktop and mobile device/browser. The browser smoke environment does not certify device behavior or frame-rate performance.
-- Verify the final built output under a GitHub Pages-style subpath after narrative/UI work stabilizes.
+- Deploy the Vite workflow's `dist/` artifact through GitHub Pages Actions; the currently published page still serves the raw source entrypoint.
 
 ## Known limitations
 
@@ -42,11 +44,11 @@
 - Narrative dialogue and clue interactions are implemented, but the complete cause-and-effect path and its recovery behavior have not yet been verified by a full fresh-playthrough. The 45–60-minute target is unmeasured and currently unproven.
 - All three endings are implemented in state selection, but browser traversal to each ending and confirmation that each displays the exact canonical line remains outstanding.
 - Desktop pointer behavior was browser-smoke-tested before this phase; actual physical desktop and mobile device testing is still needed.
-- GitHub Pages configuration is static-host compatible, but repository-side Pages configuration/deployment has not been performed.
+- The repository has a GitHub Actions Pages deployment workflow, but the published site currently serves raw source rather than its built artifact. Confirm repository Settings → Pages → Build and deployment uses GitHub Actions, then deploy the `dist/` artifact.
 
 ## Manual setup
 
-Use Node.js and npm:
+Use Node.js and npm. Do not open `index.html` with Live Server; run the Vite dev server instead:
 
 ```sh
 npm install
@@ -56,11 +58,11 @@ npm run build
 npm run preview
 ```
 
-The static output is `dist/`. For a repository subpath, build with `VITE_BASE_PATH=/repository-name/ npm run build`. Repository-side Pages settings/workflow configuration, if desired, still requires a maintainer action. No external service, account, API key, backend, or art-tool setup is required by the current code.
+`npm run dev` serves the game locally at the URL printed by Vite. `npm run build` creates static output in `dist/` and defaults to this repository's GitHub Pages path (`/You-Are-Not-Alone/`); set `VITE_BASE_PATH=/` for a domain-root deployment or another path for a different host. To publish, select GitHub Actions as the Pages build source and push to `main` so `.github/workflows/deploy.yml` can build and deploy `dist/`. No external service, account, API key, backend, or art-tool setup is required by the current code.
 
 ## Precise next steps
 
-1. Re-run typecheck, production build, and diff checks; then perform a fresh-start playthrough in a foreground browser so requestAnimationFrame and input remain active.
+1. Finish the active Git rebase with `git rebase --continue`, then publish the corrected build using GitHub Actions; perform a fresh-start playthrough in a foreground browser so requestAnimationFrame and input remain active.
 2. Record and fix any blocker in the clue, door, event, day, save, or ending chain; verify both floors and each required doorway during that run.
 3. Exercise continue/reload around the shared task, tenant investigation, friend-taken sequence, final door, and each ending. Add focused tests for any progression logic that can be tested independently.
 4. Add meaningful mid-story tasks/encounters only where needed to earn the intended 45–60-minute experience; remeasure rather than assuming runtime.
