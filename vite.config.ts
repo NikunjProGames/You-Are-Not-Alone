@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH || "/",
+ base: "/you-are-not-alone/",
   build: {
     target: "es2022",
     assetsInlineLimit: 4096,
