@@ -3,9 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#090b0b" />
-    <meta name="description" content="YOU ARE NOT ALONE — a first-person browser horror game." />
-    <title>YOU ARE NOT ALONE</title>
+    <meta name="theme-color" content="#111619" />
+    <meta name="author" content="Nikunj Arora" />
+    <meta
+      name="description"
+      content="Explore an unusually affordable home in YOU ARE NOT ALONE, a first-person psychological horror game playable free in your browser."
+    />
+    <link rel="canonical" href="https://nikunjprogames.github.io/You-Are-Not-Alone/" />
+    <link rel="sitemap" type="application/xml" href="https://nikunjprogames.github.io/You-Are-Not-Alone/sitemap.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="YOU ARE NOT ALONE" />
+    <meta property="og:title" content="YOU ARE NOT ALONE — A PleyZ Original" />
+    <meta
+      property="og:description"
+      content="A first-person psychological horror game about an unusually affordable home, its guarded residents, and a growing mystery. Play Episode One free in your browser."
+    />
+    <meta property="og:url" content="https://nikunjprogames.github.io/You-Are-Not-Alone/" />
+    <meta property="og:image" content="https://nikunjprogames.github.io/You-Are-Not-Alone/social-card.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A lonely house beneath a cold moon, with the title YOU ARE NOT ALONE." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="YOU ARE NOT ALONE — A PleyZ Original" />
+    <meta
+      name="twitter:description"
+      content="Explore an unusually affordable home in this first-person psychological horror game. Play free in your browser."
+    />
+    <meta name="twitter:image" content="https://nikunjprogames.github.io/You-Are-Not-Alone/social-card.png" />
+    <meta name="twitter:image:alt" content="A lonely house beneath a cold moon, with the title YOU ARE NOT ALONE." />
+    <title>YOU ARE NOT ALONE — A PleyZ Original Browser Horror Game</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "YOU ARE NOT ALONE",
+        "alternateName": "YOU ARE NOT ALONE — A PleyZ Original",
+        "url": "https://nikunjprogames.github.io/You-Are-Not-Alone/",
+        "description": "A first-person psychological horror game about an unusually affordable home, its guarded residents, and a growing mystery.",
+        "genre": ["Psychological horror", "Adventure"],
+        "gamePlatform": "Web browser",
+        "applicationCategory": "Game",
+        "playMode": "SinglePlayer",
+        "creator": {
+          "@type": "Person",
+          "name": "Nikunj Arora"
+        }
+      }
+    </script>
   </head>
   <body>
     <main id="app" aria-label="YOU ARE NOT ALONE">
@@ -33,7 +79,11 @@
           </div>
           <p class="title-footnote">A first-person psychological horror experience</p>
         </div>
-        <div class="title-meta"><span>EPISODE ONE</span><span>HEADPHONES RECOMMENDED</span></div>
+        <div class="title-meta">
+          <span>EPISODE ONE</span>
+          <span>HEADPHONES RECOMMENDED</span>
+          <a href="#game-details">GAME INFO</a>
+        </div>
       </section>
 
       <section id="hud" class="hud" hidden aria-live="polite">
@@ -44,6 +94,10 @@
         <div class="objective-card">
           <p class="eyebrow">CURRENT OBJECTIVE</p>
           <p id="objective-text">Take a moment to look around.</p>
+          <div id="objective-direction" class="objective-direction" hidden aria-hidden="true">
+            <span id="objective-direction-arrow">↑</span>
+            <span>DESTINATION</span>
+          </div>
         </div>
         <div id="interaction-prompt" class="interaction-prompt" hidden>
           <kbd id="interaction-key">E</kbd><span id="interaction-label"></span>
@@ -93,6 +147,53 @@
 
       <div id="screen-reader-status" class="sr-only" aria-live="polite"></div>
     </main>
+    <section id="game-details" class="site-information" aria-labelledby="game-details-title">
+      <div class="site-information-inner">
+        <header class="site-information-header">
+          <p class="eyebrow">A PLEYZ ORIGINAL</p>
+          <h2 id="game-details-title">A house with a history.</h2>
+          <p>
+            YOU ARE NOT ALONE is a first-person psychological horror game about finding
+            an affordable place to live, learning the rhythms of a shared home, and
+            deciding what to believe as small details stop adding up.
+          </p>
+          <p>Explore, observe, and speak with the people who live there. Episode One is playable free in your browser.</p>
+        </header>
+        <div class="site-information-grid">
+          <section aria-labelledby="controls-title">
+            <h3 id="controls-title">Controls</h3>
+            <dl class="controls-list">
+              <div><dt>Move</dt><dd>W A S D or arrow keys</dd></div>
+              <div><dt>Look</dt><dd>Move the mouse; click the game to recapture it</dd></div>
+              <div><dt>Interact</dt><dd>E, or tap the on-screen button</dd></div>
+              <div><dt>Continue dialogue</dt><dd>Enter or use the on-screen button</dd></div>
+              <div><dt>Run</dt><dd>Hold Shift</dd></div>
+              <div><dt>Pause / resume</dt><dd>Escape</dd></div>
+              <div><dt>Touch devices</dt><dd>Use the movement pad and drag to look</dd></div>
+            </dl>
+          </section>
+          <section aria-labelledby="creator-title">
+            <h3 id="creator-title">The creator</h3>
+            <p>Learn about the person behind this independent browser game.</p>
+            <button id="creator-open" class="text-button" type="button">About the creator</button>
+          </section>
+        </div>
+        <footer class="site-information-footer">
+          <span>Episode One · Browser game</span>
+          <a href="#app" aria-label="Return to YOU ARE NOT ALONE">Back to the game ↑</a>
+        </footer>
+      </div>
+    </section>
+    <dialog id="creator-dialog" class="creator-dialog" aria-labelledby="creator-dialog-title">
+      <button id="creator-close" class="icon-button creator-close" type="button" aria-label="Close creator information">×</button>
+      <p class="eyebrow">A PLEYZ ORIGINAL</p>
+      <h2 id="creator-dialog-title">About the creator</h2>
+      <p><strong>YOU ARE NOT ALONE — A PleyZ Original — Created by Nikunj Arora</strong></p>
+      <p>
+        An independent browser game built around authored spaces, character encounters,
+        and a slow-building mystery. Created by a 15-year-old independent developer.
+      </p>
+    </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

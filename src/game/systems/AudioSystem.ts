@@ -16,6 +16,21 @@ export class AudioSystem {
     const drone = context.createOscillator();
     const overtone = context.createOscillator();
     const lowPass = context.createBiquadFilter();
+    const windFilter = context.createBiquadFilter();
+    const forestFilter = context.createBiquadFilter();
+    const windGain = context.createGain();
+    const forestGain = context.createGain();
+    const noise = context.createBufferSource();
+    const windPulse = context.createOscillator();
+    const windDepth = context.createGain();
+    const noiseBuffer = context.createBuffer(1, context.sampleRate * 5, context.sampleRate);
+    const noiseSamples = noiseBuffer.getChannelData(0);
+    let seed = 0x6d2b79f5;
+    for (let index = 0; index < noiseSamples.length; index += 1) {
+      seed = Math.imul(seed ^ (seed >>> 15), seed | 1);
+      seed ^= seed + Math.imul(seed ^ (seed >>> 7), seed | 61);
+      noiseSamples[index] = (((seed ^ (seed >>> 14)) >>> 0) / 2147483648 - 1) * 0.12;
+    }
 
     master.gain.value = 0.34;
     ambience.gain.value = this.ambienceLevel;
@@ -26,13 +41,36 @@ export class AudioSystem {
     overtone.detune.value = 5;
     lowPass.type = "lowpass";
     lowPass.frequency.value = 260;
+    windFilter.type = "lowpass";
+    windFilter.frequency.value = 420;
+    forestFilter.type = "bandpass";
+    forestFilter.frequency.value = 1050;
+    forestFilter.Q.value = 0.45;
+    windGain.gain.value = 0.2;
+    forestGain.gain.value = 0.18;
+    noise.buffer = noiseBuffer;
+    noise.loop = true;
+    windPulse.type = "sine";
+    windPulse.frequency.value = 0.075;
+    windDepth.gain.value = 0.075;
+
     drone.connect(ambience);
     overtone.connect(ambience);
     ambience.connect(lowPass);
     lowPass.connect(master);
+    noise.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(ambience);
+    noise.connect(forestFilter);
+    forestFilter.connect(forestGain);
+    forestGain.connect(ambience);
+    windPulse.connect(windDepth);
+    windDepth.connect(windGain.gain);
     master.connect(context.destination);
     drone.start();
     overtone.start();
+    noise.start();
+    windPulse.start();
     await context.resume();
 
     this.context = context;
@@ -63,6 +101,55 @@ export class AudioSystem {
     gain.connect(this.master);
     oscillator.start(now);
     oscillator.stop(now + duration);
+  }
+
+  playUiClick(): void {
+    if (!this.context || !this.master) return;
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    const now = this.context.currentTime;
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(980, now);
+    oscillator.frequency.exponentialRampToValueAtTime(540, now + 0.045);
+    gain.gain.setValueAtTime(0.035, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+    oscillator.connect(gain);
+    gain.connect(this.master);
+    oscillator.start(now);
+    oscillator.stop(now + 0.06);
+  }
+
+  playDoorSound(): void {
+    if (!this.context || !this.master) return;
+    const now = this.context.currentTime;
+    const creak = this.context.createOscillator();
+    const creakGain = this.context.createGain();
+    const filter = this.context.createBiquadFilter();
+    creak.type = "triangle";
+    creak.frequency.setValueAtTime(138, now);
+    creak.frequency.exponentialRampToValueAtTime(68, now + 0.34);
+    filter.type = "lowpass";
+    filter.frequency.value = 420;
+    creakGain.gain.setValueAtTime(0.001, now);
+    creakGain.gain.linearRampToValueAtTime(0.055, now + 0.045);
+    creakGain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+    creak.connect(filter);
+    filter.connect(creakGain);
+    creakGain.connect(this.master);
+    creak.start(now);
+    creak.stop(now + 0.43);
+
+    const thud = this.context.createOscillator();
+    const thudGain = this.context.createGain();
+    thud.type = "sine";
+    thud.frequency.setValueAtTime(78, now + 0.16);
+    thud.frequency.exponentialRampToValueAtTime(34, now + 0.32);
+    thudGain.gain.setValueAtTime(0.035, now + 0.16);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    thud.connect(thudGain);
+    thudGain.connect(this.master);
+    thud.start(now + 0.16);
+    thud.stop(now + 0.36);
   }
 
   get isStarted(): boolean {

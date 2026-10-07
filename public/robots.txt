@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nikunjprogames.github.io/You-Are-Not-Alone/sitemap.xml

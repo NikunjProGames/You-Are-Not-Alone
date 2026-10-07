@@ -103,7 +103,7 @@ export class Player {
   ): void {
     if (canMove) {
       const { moveX, moveY } = this.getInput();
-      const speed = (this.keys.has("ShiftLeft") ? 2.85 : 2.2) * delta;
+      const speed = (this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? 2.85 : 2.2) * delta;
       const forward = this.camera.getWorldDirection(new THREE.Vector3());
       forward.y = 0;
       forward.normalize();

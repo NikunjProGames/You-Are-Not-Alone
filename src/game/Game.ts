@@ -40,10 +40,15 @@ export class Game {
   private readonly inspectionPanel = required<HTMLElement>("#inspection-panel");
   private readonly dayLabel = required<HTMLElement>("#day-label");
   private readonly objectiveText = required<HTMLElement>("#objective-text");
+  private readonly objectiveDirection = required<HTMLElement>("#objective-direction");
+  private readonly objectiveDirectionArrow = required<HTMLElement>("#objective-direction-arrow");
   private readonly toast = required<HTMLElement>("#toast");
   private readonly screenReaderStatus = required<HTMLElement>("#screen-reader-status");
   private readonly travelTransition = required<HTMLElement>("#travel-transition");
   private readonly travelTransitionCopy = required<HTMLElement>("#travel-transition-copy");
+  private readonly creatorDialog = required<HTMLDialogElement>("#creator-dialog");
+  private readonly creatorOpenButton = required<HTMLButtonElement>("#creator-open");
+  private readonly creatorCloseButton = required<HTMLButtonElement>("#creator-close");
   private readonly endingScreen = required<HTMLElement>("#ending-screen");
   private readonly endingTitle = required<HTMLElement>("#ending-title");
   private readonly endingCopy = required<HTMLElement>("#ending-copy");
@@ -58,9 +63,11 @@ export class Game {
   private readonly endingReplayButton = required<HTMLButtonElement>("#ending-replay");
   private isPlaying = false;
   private toastTimeout = 0;
+  private travelTransitionTimeout = 0;
   private autosaveTime = 0;
   private elapsed = 0;
   private lastFrame = 0;
+  private objectiveTarget: THREE.Vector3 | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -93,6 +100,7 @@ export class Game {
       () => this.story.hasFlag("episode.rescueReady") && this.story.hasFlag("episode.stoneFound"),
       () => Math.abs(this.player.position.x) < 1.3 && Math.abs(this.player.position.z - 6) < 0.6,
     );
+    window.addEventListener("game:door-sound", () => this.audio.playDoorSound());
     window.addEventListener("game:back-room-door", (event) => {
       const open = (event as CustomEvent<boolean>).detail;
       this.story.setFlag("foundation.backRoomDoorOpen", open);
@@ -113,7 +121,7 @@ export class Game {
       cinematics: this.cinematics,
       world: this.world,
       playTone: (frequency, duration, volume) => this.audio.playTone(frequency, duration, volume),
-      setObjective: (objective) => this.setObjective(objective),
+      setObjective: (objective, destination) => this.setObjective(objective, destination),
       showToast: (message) => this.showToast(message),
       saveCheckpoint: () => this.saveCheckpoint(false),
       transition: (message) => this.showTravelTransition(message),
@@ -132,14 +140,15 @@ export class Game {
   }
 
   private showTravelTransition(message: string): void {
+    window.clearTimeout(this.travelTransitionTimeout);
     this.travelTransitionCopy.textContent = message;
     this.travelTransition.hidden = false;
     this.travelTransition.classList.remove("travel-transition");
     void this.travelTransition.offsetWidth;
     this.travelTransition.classList.add("travel-transition");
-    window.setTimeout(() => {
+    this.travelTransitionTimeout = window.setTimeout(() => {
       this.travelTransition.hidden = true;
-    }, 3300);
+    }, 4200);
   }
 
   start(): void {
@@ -158,6 +167,17 @@ export class Game {
     this.resumeButton.addEventListener("click", () => this.resume());
     this.saveButton.addEventListener("click", () => this.saveCheckpoint());
     this.inspectCloseButton.addEventListener("click", () => this.closeInspection());
+    this.creatorOpenButton.addEventListener("click", () => {
+      if (!this.isPlaying) this.creatorDialog.showModal();
+    });
+    this.creatorCloseButton.addEventListener("click", () => this.creatorDialog.close());
+    this.creatorDialog.addEventListener("click", (event) => {
+      if (event.target === this.creatorDialog) this.creatorDialog.close();
+    });
+    document.addEventListener("click", (event) => {
+      if (!this.audio.isStarted || !(event.target instanceof Element)) return;
+      if (event.target.closest("button")) this.audio.playUiClick();
+    }, true);
     this.endingReplayButton.addEventListener("click", () => {
       this.endingScreen.hidden = true;
       void this.beginNewGame();
@@ -177,7 +197,12 @@ export class Game {
     this.lastFrame = now;
     this.world.update(delta);
 
-    if (this.isPlaying && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
+    if (
+      this.isPlaying &&
+      this.pauseScreen.hidden &&
+      this.inspectionPanel.hidden &&
+      this.travelTransition.hidden
+    ) {
       this.elapsed += delta;
       this.player.update(
         delta,
@@ -185,6 +210,7 @@ export class Game {
         this.world.canOccupy,
         this.world.floorAt,
       );
+      this.updateObjectiveDirection();
       if (!this.cinematics.active && !this.dialogues.isActive) {
         this.interactions.update();
         this.events.update(this.player.position);
@@ -218,6 +244,8 @@ export class Game {
     this.world.setTenantStudyOpen(false);
     this.world.setMaraRoomAvailable(false);
     this.world.setMaraRoomDoorOpen(false);
+    this.world.setUpperEntryDoorOpen(true);
+    this.world.setUpperTenantDoorOpen(false);
     this.world.entity.visible = false;
     this.world.setFinaleFlicker(false);
     this.world.setEntityReveal(0);
@@ -227,6 +255,7 @@ export class Game {
     this.characters.spawn("tenant");
     this.player.restore(INITIAL_PLAYER);
     this.endingScreen.hidden = true;
+    this.objectiveTarget = null;
     this.setObjective("Listen to the opening, then settle into the house.");
     await this.enterGame();
     this.episode.start();
@@ -245,7 +274,9 @@ export class Game {
     this.world.setBackRoomDoorOpen(snapshot.flags["foundation.backRoomDoorOpen"] === true);
     this.episode.restore(snapshot);
     const savedObjective = snapshot.flags["episode.objective"];
-    if (typeof savedObjective === "string") this.setObjective(savedObjective);
+    if (typeof savedObjective === "string") {
+      this.setObjective(savedObjective, parseObjectiveTarget(snapshot.flags["episode.objectiveTarget"]));
+    }
     await this.enterGame();
     if (!this.story.hasFlag("episode.prologueComplete")) this.episode.start();
     else this.showToast("You are back where you left off.");
@@ -253,6 +284,8 @@ export class Game {
 
   private async enterGame(): Promise<void> {
     this.isPlaying = true;
+    document.body.style.overflow = "hidden";
+    window.scrollTo(0, 0);
     this.title.classList.add("screen-leaving");
     this.hud.hidden = false;
     window.setTimeout(() => {
@@ -260,6 +293,7 @@ export class Game {
       this.title.classList.remove("screen-leaving");
     }, 750);
     await this.audio.start();
+    this.audio.playUiClick();
     this.player.focusCanvas();
     this.saveCheckpoint(false);
   }
@@ -290,6 +324,7 @@ export class Game {
     this.player.setLookEnabled(false);
     this.player.releasePointerLock();
     this.saveCheckpoint(false);
+    this.objectiveDirection.hidden = true;
   }
 
   private closeInspection(): void {
@@ -308,6 +343,7 @@ export class Game {
   private pause(): void {
     if (
       !this.isPlaying ||
+      !this.travelTransition.hidden ||
       !this.pauseScreen.hidden ||
       this.dialogues.isActive ||
       this.cinematics.active
@@ -318,6 +354,7 @@ export class Game {
     this.player.setLookEnabled(false);
     this.player.releasePointerLock();
     this.interactions.clearFocus();
+    this.objectiveDirection.hidden = true;
     this.saveCheckpoint(false);
   }
 
@@ -358,10 +395,46 @@ export class Game {
     this.dayLabel.textContent = `DAY ${snapshot.day} · ${PHASE_LABEL[snapshot.phase]}`;
   }
 
-  private setObjective(text: string): void {
+  private setObjective(text: string, destination?: THREE.Vector3): void {
     this.objectiveText.textContent = text;
     this.screenReaderStatus.textContent = `New objective: ${text}`;
     this.story.setFlag("episode.objective", text);
+    this.objectiveTarget = destination?.clone() ?? null;
+    this.story.setFlag(
+      "episode.objectiveTarget",
+      destination ? `${destination.x},${destination.y},${destination.z}` : "",
+    );
+  }
+
+  private updateObjectiveDirection(): void {
+    const target = this.objectiveTarget;
+    if (
+      !target ||
+      !this.isPlaying ||
+      !this.pauseScreen.hidden ||
+      !this.inspectionPanel.hidden ||
+      this.dialogues.isActive ||
+      this.cinematics.active
+    ) {
+      this.objectiveDirection.hidden = true;
+      return;
+    }
+    const toTarget = target.clone().sub(this.player.position);
+    toTarget.y = 0;
+    if (toTarget.lengthSq() < 10.24) {
+      this.objectiveDirection.hidden = true;
+      return;
+    }
+    toTarget.normalize();
+    const forward = this.player.camera.getWorldDirection(new THREE.Vector3());
+    forward.y = 0;
+    forward.normalize();
+    const angle = Math.atan2(
+      forward.x * toTarget.z - forward.z * toTarget.x,
+      forward.dot(toTarget),
+    );
+    this.objectiveDirectionArrow.style.transform = `rotate(${angle}rad)`;
+    this.objectiveDirection.hidden = false;
   }
 
   private showEnding(ending: EpisodeEnding): void {
@@ -369,6 +442,7 @@ export class Game {
     this.endingCopy.textContent = ending.text;
     this.endingScreen.hidden = false;
     this.isPlaying = false;
+    document.body.style.overflow = "";
     this.player.setLookEnabled(false);
     this.player.releasePointerLock();
     this.interactions.clearFocus();
@@ -400,4 +474,15 @@ function required<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
   if (!element) throw new Error(`Required game element is missing: ${selector}`);
   return element;
+}
+
+function parseObjectiveTarget(value: unknown): THREE.Vector3 | undefined {
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  const serializedComponents = value.split(",");
+  if (serializedComponents.length !== 3 || serializedComponents.some((component) => component.trim() === "")) {
+    return undefined;
+  }
+  const components = serializedComponents.map(Number);
+  if (components.some((component) => !Number.isFinite(component))) return undefined;
+  return new THREE.Vector3(components[0], components[1], components[2]);
 }

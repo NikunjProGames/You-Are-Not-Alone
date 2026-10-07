@@ -19,7 +19,7 @@ interface EpisodeOneOptions {
   characters: CharacterSystem;
   cinematics: CinematicSystem;
   world: HouseDemo;
-  setObjective: (objective: string) => void;
+  setObjective: (objective: string, destination?: THREE.Vector3) => void;
   showToast: (message: string) => void;
   playTone: (frequency: number, duration: number, volume: number) => void;
   saveCheckpoint: () => void;
@@ -27,7 +27,20 @@ interface EpisodeOneOptions {
   showEnding: (ending: EpisodeEnding) => void;
 }
 
-const FINAL_ROOM_CENTER = new THREE.Vector3(0, 1.64, -29.2);
+const FINAL_ROOM_CENTER = new THREE.Vector3(0, 4.8, -24.7);
+const OBJECTIVE_DESTINATIONS = {
+  entry: new THREE.Vector3(0, 0, 6),
+  reception: new THREE.Vector3(-1.5, 0, 3.1),
+  upstairsBed: new THREE.Vector3(-4.15, 4.8, -2.9),
+  maraDining: new THREE.Vector3(2.75, 0, -2.1),
+  laundry: new THREE.Vector3(-4.9, 0, -6.2),
+  pipe: new THREE.Vector3(-5.9, 0, -7.55),
+  storageKey: new THREE.Vector3(-9.45, 0, -9.45),
+  tenantStudy: new THREE.Vector3(9.55, 0, -10.45),
+  maraDoor: new THREE.Vector3(2.15, 4.4, -2.55),
+  rescueStone: new THREE.Vector3(1.15, 0, 12.5),
+  forbiddenDoor: new THREE.Vector3(0, 4.8, -20.2),
+};
 
 export class EpisodeOne {
   private transforming = false;
@@ -78,7 +91,7 @@ export class EpisodeOne {
       ],
       onComplete: () => {
         story.setFlag("episode.prologueComplete", true);
-        this.options.setObjective("Open the front door and check in with the tenant at reception.");
+        this.options.setObjective("Open the front door and check in with the tenant at reception.", OBJECTIVE_DESTINATIONS.entry);
         this.options.world.setMood("settled");
         this.options.saveCheckpoint();
       },
@@ -87,11 +100,21 @@ export class EpisodeOne {
 
   restore(snapshot: Readonly<StorySnapshot>): void {
     const { world, characters } = this.options;
+    if (
+      snapshot.flags["episode.finalDoorOpened"] === true &&
+      snapshot.flags["episode.endingStarted"] !== true &&
+      snapshot.player.y < 2.2 &&
+      snapshot.player.z < -20
+    ) {
+      this.options.player.restore({ x: 0, y: 3.16, z: -19.2, yaw: 0 });
+    }
     world.setWestStoreOpen(snapshot.flags["episode.westStoreUnlocked"] === true);
     world.setTenantStudyOpen(snapshot.flags["episode.tenantStudyUnlocked"] === true);
     world.setEntryDoorOpen(snapshot.flags["episode.entryDoorOpened"] === true);
     world.setMaraRoomAvailable(snapshot.flags["episode.maraRoomAvailable"] === true);
     world.setMaraRoomDoorOpen(snapshot.flags["episode.maraRoomChecked"] === true);
+    world.setUpperEntryDoorOpen(true);
+    world.setUpperTenantDoorOpen(true);
     world.setBedroomDoorOpen(snapshot.flags["episode.bedroomExitOpen"] === true);
     world.setFinalDoorOpen(snapshot.flags["episode.finalDoorOpened"] === true);
     if (snapshot.flags["episode.friendTaken"] === true) characters.despawn("housemate");
@@ -105,9 +128,9 @@ export class EpisodeOne {
     if (snapshot.flags["episode.endingStarted"] === true) {
       world.setFinaleFlicker(true);
       world.setEntityReveal(1);
-      characters.place("tenant", new THREE.Vector3(2, 0, -30.55), Math.PI);
+      characters.place("tenant", new THREE.Vector3(2, 3.16, -26.35), Math.PI);
       if (snapshot.flags["episode.finalDoorOpened"] === true) {
-        characters.spawn("housemate", new THREE.Vector3(-1.9, 0, -30.45));
+        characters.spawn("housemate", new THREE.Vector3(-1.9, 3.16, -26.3));
       }
     }
     world.setMood(snapshot.flags["episode.suspicionStarted"] === true ? "uneasy" : "settled");
@@ -155,10 +178,10 @@ export class EpisodeOne {
       return;
     }
     if (id === "stone") {
-      this.inspect("stone", "A heavy piece of masonry", "A chunk of broken stone has fallen from the old garden wall. It is solid enough to break a rotten latch, if there is no other way in.");
+      this.inspect("stone", "A heavy piece of masonry", "A chunk of broken stone has fallen from the old garden wall. It is solid enough to break the rotten latch upstairs, if there is no other way in.");
       this.options.story.setFlag("episode.stoneFound", true);
       if (this.options.story.hasFlag("episode.rescueReady")) {
-        this.options.setObjective("Take the stone to the door the tenant forbade you to open.");
+        this.options.setObjective("Carry the stone upstairs to the door the tenant forbade you to open.", OBJECTIVE_DESTINATIONS.forbiddenDoor);
       } else {
         this.options.showToast("You keep the stone nearby. It feels heavier than it should.");
       }
@@ -260,7 +283,7 @@ export class EpisodeOne {
       },
       run: () => {
         story.setFlag("episode.hallEntered", true);
-        this.options.setObjective("Check in with the tenant at reception.");
+        this.options.setObjective("Check in with the tenant at reception.", OBJECTIVE_DESTINATIONS.reception);
       },
     });
     events.register({
@@ -283,7 +306,7 @@ export class EpisodeOne {
         }
         this.retreatElapsed = 0;
         this.retreating = true;
-        this.options.setObjective("The stranger hurried inside. Ask the tenant who they are.");
+        this.options.setObjective("The stranger hurried inside. Ask the tenant who they are.", OBJECTIVE_DESTINATIONS.reception);
         this.options.showToast("A figure catches your eye, then slips quickly into the house.");
         this.options.saveCheckpoint();
       },
@@ -316,7 +339,7 @@ export class EpisodeOne {
           onComplete: () => {
             characters.place("tenant", new THREE.Vector3(-1.5, 0, 3.1), 0);
             characters.place("housemate", new THREE.Vector3(2.75, 0, -2.1), Math.PI);
-            this.options.setObjective("Find Mara in the dining area. Ask why the tenant treats her this way.");
+            this.options.setObjective("Find Mara in the dining area. Ask why the tenant treats her this way.", OBJECTIVE_DESTINATIONS.maraDining);
             this.options.saveCheckpoint();
           },
         });
@@ -334,7 +357,7 @@ export class EpisodeOne {
         characters.place("housemate", new THREE.Vector3(-5.05, 0, -6.95), Math.PI / 2);
         story.setFlag("episode.sawMaraSweep", true);
         this.options.playTone(74, 0.75, 0.045);
-        this.options.setObjective("Mara is scrubbing something from the laundry floor. Find out what it is.");
+        this.options.setObjective("Mara is scrubbing something from the laundry floor. Find out what it is.", OBJECTIVE_DESTINATIONS.laundry);
         this.say({
           id: "episode-mara-sweeping",
           lines: [
@@ -375,7 +398,7 @@ export class EpisodeOne {
       run: () => {
         characters.place("housemate", new THREE.Vector3(-5.1, 0, -7.7), Math.PI / 2);
         story.setFlag("episode.sharedTaskStarted", true);
-        this.options.setObjective("Help the housemate check the laundry pipes and find where the stain came from.");
+        this.options.setObjective("Help the housemate check the laundry pipes and find where the stain came from.", OBJECTIVE_DESTINATIONS.laundry);
         this.options.playTone(47, 1.8, 0.045);
         this.say({
           id: "episode-shared-search",
@@ -402,7 +425,7 @@ export class EpisodeOne {
           ],
           onComplete: () => {
             story.setFlag("episode.sharedTaskConversationComplete", true);
-            this.options.setObjective("Turn the seized valve behind the laundry sink and stop the leak.");
+            this.options.setObjective("Turn the seized valve behind the laundry sink and stop the leak.", OBJECTIVE_DESTINATIONS.pipe);
             this.options.saveCheckpoint();
           },
         });
@@ -430,7 +453,7 @@ export class EpisodeOne {
           ],
           onComplete: () => {
             characters.place("tenant", new THREE.Vector3(4.65, 0, -8.8), -Math.PI / 2);
-            this.options.setObjective("The tenant knew where you were headed. Search their records with Mara.");
+            this.options.setObjective("The tenant knew where you were headed. Search their records with Mara.", OBJECTIVE_DESTINATIONS.tenantStudy);
           },
         });
       },
@@ -481,7 +504,7 @@ export class EpisodeOne {
         onComplete: () => {
           story.setFlag("episode.housemateTalks", talks + 1);
           story.setFlag("episode.housemateMet", true);
-          this.options.setObjective("Ask the tenant who the person was, then return upstairs.");
+          this.options.setObjective("Ask the tenant who the person was, then return upstairs.", OBJECTIVE_DESTINATIONS.reception);
         },
       });
       return;
@@ -507,7 +530,7 @@ export class EpisodeOne {
         story.setFlag("episode.housemateDinnerTalk", true);
         story.setFlag("episode.tenantAbuseObserved", true);
         story.setFlag("episode.housemateTalks", talks + 1);
-        this.options.setObjective("Investigate the laundry stain and pipe with Mara. Decide whether her story holds up.");
+        this.options.setObjective("Investigate the laundry stain and pipe with Mara. Decide whether her story holds up.", OBJECTIVE_DESTINATIONS.laundry);
       },
       });
       return;
@@ -540,7 +563,7 @@ export class EpisodeOne {
           story.setFlag("episode.secondHousemateTalk", true);
           story.setFlag("episode.housemateTalks", talks + 1);
           this.advanceTo(2, "morning");
-          this.options.setObjective("Check the laundry room stain, then ask Mara what she was doing there.");
+          this.options.setObjective("Check the laundry room stain, then ask Mara what she was doing there.", OBJECTIVE_DESTINATIONS.laundry);
           this.options.saveCheckpoint();
         },
       });
@@ -577,7 +600,7 @@ export class EpisodeOne {
         onComplete: () => {
           story.setFlag("episode.planMade", true);
           this.advanceTo(3, "night");
-          this.options.setObjective("You and Mara will confront the tenant tonight. Return upstairs and sleep before Sunday.");
+          this.options.setObjective("You and Mara will confront the tenant tonight. Return upstairs and sleep before Sunday.", OBJECTIVE_DESTINATIONS.upstairsBed);
           this.options.saveCheckpoint();
         },
       });
@@ -624,7 +647,7 @@ export class EpisodeOne {
           story.setFlag("episode.checkInComplete", true);
           story.setFlag("episode.forbiddenDoorWarned", true);
           story.setFlag("episode.tenantTalks", count + 1);
-          this.options.setObjective("Go upstairs to your room and rest after the journey.");
+          this.options.setObjective("Go upstairs to your room and rest after the journey.", OBJECTIVE_DESTINATIONS.upstairsBed);
           this.options.saveCheckpoint();
         },
       });
@@ -642,7 +665,7 @@ export class EpisodeOne {
         onComplete: () => {
           story.setFlag("episode.tenantAskedAboutMara", true);
           story.setFlag("episode.tenantTalks", count + 1);
-          this.options.setObjective("Return upstairs. You can come back down for supper.");
+          this.options.setObjective("Return upstairs. You can come back down for supper.", OBJECTIVE_DESTINATIONS.upstairsBed);
           this.options.saveCheckpoint();
         },
       });
@@ -664,6 +687,49 @@ export class EpisodeOne {
             ],
           },
         ],
+        onComplete: () => story.setFlag("episode.tenantTalks", count + 1),
+      });
+      return;
+    }
+    if (story.hasFlag("episode.tenantConfronted")) {
+      this.say({
+        id: "episode-tenant-repeat",
+        lines: [
+          { speaker: "Tenant", text: "I've answered you. Decide what you believe, but don't drag Mara into it." },
+          { speaker: "You", text: "I need to talk to Mara before I decide what to do." },
+        ],
+      });
+      return;
+    }
+    const hasLedger = story.hasFlag("episode.tenantLedger");
+    const hasRecording = story.hasFlag("episode.tenantRecording");
+    if (!hasLedger || !hasRecording) {
+      const lines: Conversation["lines"] = [];
+      if (hasLedger) {
+        lines.push(
+          { speaker: "You", text: "Your ledger lists repairs before the dates you gave Mara." },
+          { speaker: "Tenant", text: "An old entry is not proof of anything. Houses need repairs." },
+        );
+      } else {
+        lines.push(
+          { speaker: "You", text: "Mara asked me to compare the repair records with what you told us." },
+          { speaker: "Tenant", text: "Then read the records before you decide what they mean." },
+        );
+      }
+      if (hasRecording) {
+        lines.push(
+          { speaker: "You", text: "The recorder caught you saying to keep every room occupied." },
+          { speaker: "Tenant", text: "Old equipment records whatever it hears. Be careful about deciding what you heard." },
+        );
+      } else {
+        lines.push(
+          { speaker: "You", text: "There is more to this than the repair dates." },
+          { speaker: "Tenant", text: "If you have something to ask me, bring more than a suspicion." },
+        );
+      }
+      this.say({
+        id: "episode-tenant-evidence-check",
+        lines,
         onComplete: () => story.setFlag("episode.tenantTalks", count + 1),
       });
       return;
@@ -695,7 +761,7 @@ export class EpisodeOne {
       this.options.world.setMood("uneasy");
       this.options.playTone(61, 0.9, 0.055);
       if (story.value.day < 2) this.advanceTo(2, "morning");
-      this.options.setObjective("Ask Mara why she was cleaning the laundry-room stain.");
+      this.options.setObjective("Ask Mara why she was cleaning the laundry-room stain.", OBJECTIVE_DESTINATIONS.laundry);
     }
     if (id === "loose-valve") {
       if (!story.hasFlag("episode.sharedTaskStarted")) {
@@ -710,7 +776,7 @@ export class EpisodeOne {
       this.options.world.setMood("settled");
       this.options.playTone(183, 0.24, 0.04);
       this.advanceTo(3, "afternoon");
-      this.options.setObjective("Mara trusts you now. Find the key she left in the storage room and compare what she says with the tenant's records.");
+      this.options.setObjective("Mara trusts you now. Find the key she left in the storage room and compare what she says with the tenant's records.", OBJECTIVE_DESTINATIONS.storageKey);
       this.options.showToast("The pipe stops knocking. The red stain was rust-water, not blood.");
       this.options.saveCheckpoint();
       this.evaluateTenantProgress();
@@ -732,14 +798,14 @@ export class EpisodeOne {
     }
     if (id === "sealed-note") {
       story.setFlag("episode.tenantSealedNote", true);
-      this.options.setObjective("The note warns the tenant not to let Mara take you downstairs. Ask Mara what is below the house.");
+      this.options.setObjective("The note warns the tenant not to let Mara take you downstairs. Ask Mara what is below the house.", OBJECTIVE_DESTINATIONS.maraDining);
     }
     if (id === "tenant-audio") {
       story.setFlag("episode.tenantRecording", true);
       story.setFlag("episode.tenantEvidence", true);
       this.options.world.setMood("uneasy");
       this.options.playTone(39, 1.5, 0.07);
-      this.options.setObjective("Talk to the tenant about the ledger and the recording.");
+      this.options.setObjective("Talk to the tenant about the ledger and the recording.", OBJECTIVE_DESTINATIONS.reception);
       this.evaluateTenantProgress();
     }
     if (id === "burned-key") {
@@ -774,7 +840,7 @@ export class EpisodeOne {
       story.hasFlag("episode.firePhotoSeen") &&
       story.hasFlag("episode.housemateMet")
     ) {
-      this.options.setObjective("The hallway warning does not explain the stain. Find out what Mara was cleaning.");
+      this.options.setObjective("The hallway warning does not explain the stain. Find out what Mara was cleaning.", OBJECTIVE_DESTINATIONS.laundry);
     }
   }
 
@@ -783,7 +849,7 @@ export class EpisodeOne {
     if (story.hasFlag("episode.housemateTrust") && story.hasFlag("episode.tenantLedger")) {
       story.setFlag("episode.tenantStudyUnlocked", true);
       this.options.world.setTenantStudyOpen(true);
-      this.options.setObjective("The dates in the ledger contradict the tenant. Find the recorder in the study.");
+      this.options.setObjective("The dates in the ledger contradict the tenant. Find the recorder in the study.", OBJECTIVE_DESTINATIONS.tenantStudy);
     }
     if (
       story.hasFlag("episode.housemateTrust") &&
@@ -793,7 +859,7 @@ export class EpisodeOne {
     ) {
       story.setFlag("episode.tenantSuspected", true);
       this.advanceTo(3, "night");
-      this.options.setObjective("The tenant's account doesn't fit the evidence. Bring it to Mara and decide what to do.");
+      this.options.setObjective("The tenant's account doesn't fit the evidence. Bring it to Mara and decide what to do.", OBJECTIVE_DESTINATIONS.maraDining);
     }
   }
 
@@ -814,7 +880,7 @@ export class EpisodeOne {
       this.options.world.setEntryDoorOpen(true);
       this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
       this.options.transition("You wake before dawn, dress for work and leave. The office stays offscreen; an ordinary shift passes in a black cut. You return home after dark.");
-      this.options.setObjective("Enter the house. Someone is waiting near the front hall.");
+      this.options.setObjective("Enter the house. Someone is waiting near the front hall.", OBJECTIVE_DESTINATIONS.entry);
     } else if (
       story.hasFlag("episode.tenantAskedAboutMara") &&
       !story.hasFlag("episode.returnedFromWorkDay3")
@@ -825,14 +891,14 @@ export class EpisodeOne {
       this.options.world.setEntryDoorOpen(true);
       this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
       this.options.transition("Morning, commute, fluorescent office light. The day is not shown; the cut brings you home on the third evening.");
-      this.options.setObjective("Go through the hall. The tenant's voice is raised.");
+      this.options.setObjective("Go through the hall. The tenant's voice is raised.", OBJECTIVE_DESTINATIONS.maraDining);
     } else if (story.hasFlag("episode.planMade") && story.value.day === 3) {
       story.setFlag("episode.sundayMorning", true);
       this.advanceTo(4, "morning");
       story.setFlag("episode.maraRoomAvailable", true);
       this.options.world.setMaraRoomAvailable(true);
       this.options.transition("Sunday. No commute, no office. You wake to an empty house and no answer from Mara's room.");
-      this.options.setObjective("Try Mara's upstairs door.");
+      this.options.setObjective("Try Mara's upstairs door.", OBJECTIVE_DESTINATIONS.maraDoor);
     } else {
       this.options.showToast("There is more to settle before you can sleep.");
       return;
@@ -856,7 +922,7 @@ export class EpisodeOne {
           { speaker: "The house", text: "No answer. You knock again. Somewhere downstairs, a latch clicks." },
         ],
         onComplete: () => {
-          this.options.setObjective("Open Mara's door and check the room.");
+          this.options.setObjective("Open Mara's door and check the room.", OBJECTIVE_DESTINATIONS.maraDoor);
           this.options.saveCheckpoint();
         },
       });
@@ -887,7 +953,14 @@ export class EpisodeOne {
     this.options.world.setBedroomDoorOpen(true);
     story.setFlag("episode.bedroomExitOpen", true);
     this.options.world.setFinalDoorOpen(false);
-    this.options.setObjective("The forbidden room is at the far end of the back hall. Find something heavy enough to break its latch.");
+    this.options.setObjective(
+      story.hasFlag("episode.stoneFound")
+        ? "Carry the stone upstairs to the door the tenant forbade you to open."
+        : "Find something heavy in the garden, then return upstairs to the forbidden room.",
+      story.hasFlag("episode.stoneFound")
+        ? OBJECTIVE_DESTINATIONS.forbiddenDoor
+        : OBJECTIVE_DESTINATIONS.rescueStone,
+    );
     this.options.playTone(33, 2.3, 0.085);
     this.say({
       id: "episode-friend-taken",
@@ -906,8 +979,8 @@ export class EpisodeOne {
       return;
     }
     story.setFlag("episode.finalDoorOpened", true);
-    characters.place("tenant", new THREE.Vector3(2, 0, -30.55), Math.PI);
-    characters.spawn("housemate", new THREE.Vector3(-1.9, 0, -30.45));
+    characters.place("tenant", new THREE.Vector3(2, 3.16, -26.35), Math.PI);
+    characters.spawn("housemate", new THREE.Vector3(-1.9, 3.16, -26.3));
     this.options.playTone(42, 0.65, 0.12);
     this.options.showToast("The stone breaks the latch. The sound carries through the hidden room.");
     this.options.saveCheckpoint();
@@ -925,7 +998,7 @@ export class EpisodeOne {
     world.setMood("uneasy");
     playTone(29, 3.2, 0.1);
     this.options.setObjective("The tenant is here. The room feels familiar in a way you cannot explain.");
-    characters.place("tenant", new THREE.Vector3(2, 0, -30.55), Math.PI);
+    characters.place("tenant", new THREE.Vector3(2, 3.16, -26.35), Math.PI);
     const playerAt = player.position.clone();
     const monster = world.entity.position.clone().add(new THREE.Vector3(0, 1.1, 0));
     this.say({
@@ -939,19 +1012,19 @@ export class EpisodeOne {
             {
               duration: 2.4,
               position: playerAt.clone().add(new THREE.Vector3(0.12, 0.06, 0.08)),
-              lookAt: new THREE.Vector3(0, 1.42, -30.4),
+              lookAt: new THREE.Vector3(0, 4.58, -25.9),
               fov: 64,
             },
             {
               duration: 3.5,
-              position: new THREE.Vector3(2.35, 1.9, -28.35),
+              position: new THREE.Vector3(2.35, 5.06, -23.85),
               lookAt: monster,
               fov: 54,
             },
             {
               duration: 2.8,
-              position: new THREE.Vector3(1.4, 1.72, -30.15),
-              lookAt: new THREE.Vector3(0, 1.35, -30.55),
+              position: new THREE.Vector3(1.4, 4.88, -24.95),
+              lookAt: new THREE.Vector3(0, 4.51, -26.35),
               fov: 50,
             },
           ],

@@ -55,7 +55,7 @@
 
 ## Phase 3 — Full Episode 1 implementation (partial; final verification outstanding)
 
-- [~] Expand the connected procedural house to two storeys, with stairs, upstairs bedroom, reception/dining spaces, front exterior, garden, fence, service rooms, tenant areas, and rescue route. Continue geometry, furnishing, asset, and traversal QA.
+- [~] Expand the connected procedural house to two storeys, with stairs, a central upper-corridor entrance, protagonist's bedroom on the left, Mara's room on the right, a separate tenant room, and a larger finale room. The revised layout is implemented; validate the landing, room entrances, doors, route blockers, and complete traversal before marking complete.
 - [x] Establish fire loss, financial pressure, job, unusually cheap rental, outside arrival, check-in, upstairs rest, and offscreen work transitions.
 - [~] Implement multiple suspicious encounters/clues involving Mara, the distinct first strange person. Mara retreats on first encounter; stain cleaning, warnings, repeated talks, shared repair, and the Day 3 scolding support suspicion-to-trust progression. Full pacing and missable-clue recovery remain unverified.
 - [~] Implement a separate post-trust tenant investigation with behavior, clues, contradictions, and confrontation. The complete evidence chain remains to be fresh-play tested.
@@ -66,7 +66,7 @@
 ## Phase 4 — Visual, audio, and gameplay polish (substantial work remains)
 
 - Replace foundation-only environment and character treatments with a coherent licensed/custom asset set.
-- Refine house dressing, faces, clothing, gestures, animation, lighting, sound, title, camera, pacing, UI, subtitles, accessibility, and interaction feedback.
+- [~] Refine house dressing, lighting, environmental audio, title, objective UI, page information, and discoverability. The transom, facade details, laundry dressing, button/door sounds, readable rest transition, and creator dialog are implemented; continue room-by-room art direction, character presentation, sound pacing, subtitles, accessibility, and interaction feedback.
 - Tune desktop visual quality and add reasonable mobile quality scaling.
 - Keep an asset/license inventory and document any real sourcing or quality limitations.
 
