@@ -72,7 +72,18 @@ export class DialogueSystem {
       button.addEventListener("click", () => {
         if (choice.setFlag) this.onChoiceFlag?.(choice.setFlag.key, choice.setFlag.value);
         this.onChoice?.(this.active?.id ?? "", choice.id);
-        if (choice.next === undefined) this.close();
+        if (choice.response && this.active) {
+          this.active = {
+            ...this.active,
+            lines: [
+              ...this.active.lines.slice(0, this.lineIndex + 1),
+              choice.response,
+              ...this.active.lines.slice(this.lineIndex + 1),
+            ],
+          };
+          this.lineIndex += 1;
+          this.renderLine();
+        } else if (choice.next === undefined) this.close();
         else {
           this.lineIndex = choice.next;
           this.renderLine();

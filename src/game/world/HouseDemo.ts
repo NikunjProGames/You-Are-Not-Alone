@@ -22,8 +22,9 @@ export interface HouseDemo {
   setWestStoreOpen: (open: boolean) => void;
   setTenantStudyOpen: (open: boolean) => void;
   setEntryDoorOpen: (open: boolean) => void;
-  setSilasRoomAvailable: (available: boolean) => void;
-  setSilasRoomDoorOpen: (open: boolean) => void;
+  setArenRoomAvailable: (available: boolean) => void;
+  setArenRoomDoorOpen: (open: boolean) => void;
+  setProtagonistRoomDoorOpen: (open: boolean) => void;
   setStoneCollected: (collected: boolean) => void;
   setUpperEntryDoorOpen: (open: boolean) => void;
   setUpperTenantDoorOpen: (open: boolean) => void;
@@ -68,7 +69,7 @@ export function buildHouseDemo(
   const obstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> = [];
   const upperObstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> = [];
   const windObjects: Array<{ object: THREE.Object3D; base: number; phase: number; amount: number }> = [];
-  const storyDoors = { westStore: false, tenantStudy: false, silasRoom: false };
+  const storyDoors = { westStore: false, tenantStudy: false, arenRoom: false };
 
   const hemi = new THREE.HemisphereLight("#b2c5d0", "#3a3327", 1.04);
   scene.add(hemi);
@@ -196,7 +197,7 @@ export function buildHouseDemo(
     skinColor: "#b18469",
     hairColor: "#20191b",
     trousersColor: "#342d32",
-    hairStyle: "long",
+    hairStyle: "short",
     scaleX: 0.96,
     scaleY: 0.97,
   });
@@ -262,6 +263,7 @@ export function buildHouseDemo(
     () => false,
     -20.17,
   );
+  const protagonistRoomDoor = makeSideDoor(scene, wood, brass, -2.15, -2.55, -1, 3.16);
   const finalDoor = makeFinalDoor(scene, wood, brass, canOpenFinalDoor, onStoryInteraction, -20.2, 3.16);
   const entryDoor = makePassageDoor(scene, wood, brass, (open) => {
     if (open) onStoryInteraction("entry-door-opened");
@@ -288,6 +290,7 @@ export function buildHouseDemo(
     makeDoorInteractable("foundation-west-door", "Open the laundry door", westDoor),
     makeDoorInteractable("foundation-east-door", "Open the tenant's door", eastDoor),
     makeDoorInteractable("foundation-bedroom-exit", "Open the bedroom door", bedroomExitDoor),
+    makeDoorInteractable("episode-protagonist-bedroom-door", "Open your bedroom door", protagonistRoomDoor),
   );
   const westStoreInteractable = makeDoorInteractable(
     "episode-west-store-door",
@@ -368,7 +371,7 @@ export function buildHouseDemo(
   }
   const upperEntryDoor = makeCustomPassageDoor(scene, wood, brass, 0.08, 3.16);
   upperEntryDoor.setOpen(true);
-  const silasRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16);
+  const arenRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16);
   const upstairsTenantDoor = makeSideDoor(scene, wood, brass, 2.15, -15.55, 1, 3.16);
   interactables.push(
     makeDoorInteractable(
@@ -377,11 +380,11 @@ export function buildHouseDemo(
       upperEntryDoor,
     ),
     {
-      id: "episode-silas-room",
-      prompt: () => silasRoomDoor.isOpen ? "Check Silas's room" : "Knock on Silas's door",
-      object: silasRoomDoor.panel,
-      enabled: () => scene.userData.silasRoomAvailable === true,
-      interact: () => onStoryInteraction("silas-room-door"),
+      id: "episode-aren-room",
+      prompt: () => arenRoomDoor.isOpen ? "Check Aren's room" : "Knock on Aren's door",
+      object: arenRoomDoor.panel,
+      enabled: () => scene.userData.arenRoomAvailable === true,
+      interact: () => onStoryInteraction("aren-room-door"),
     },
     makeDoorInteractable(
       "episode-upstairs-tenant-room",
@@ -402,6 +405,7 @@ export function buildHouseDemo(
       door.update(delta);
       backRoomDoor.update(delta);
       bedroomExitDoor.update(delta);
+      protagonistRoomDoor.update(delta);
       westDoor.update(delta);
       eastDoor.update(delta);
       westStoreDoor.update(delta);
@@ -409,7 +413,7 @@ export function buildHouseDemo(
       finalDoor.update(delta);
       entryDoor.update(delta);
       upperEntryDoor.update(delta);
-      silasRoomDoor.update(delta);
+      arenRoomDoor.update(delta);
       upstairsTenantDoor.update(delta);
       if (finaleFlicker) {
         finaleElapsed += delta;
@@ -420,14 +424,18 @@ export function buildHouseDemo(
       }
     },
     floorAt: (x, z, currentHeight) => {
-      const onStair = x > 3.55 && x < 5.55 && z > -0.35 && z < 4.95;
-      if (onStair) return THREE.MathUtils.clamp((4.8 - z) / 4.6, 0, 1) * 3.16;
+      const onStair = x > 3.55 && x < 5.55 && z > 0.12 && z < 4.95;
+      if (onStair) {
+        const stairFloor = THREE.MathUtils.clamp((4.55 - z) / (4.55 - 0.39), 0, 1) * 3.16;
+        return Math.abs(stairFloor - currentHeight) <= 0.34 ? stairFloor : null;
+      }
+      if (currentHeight > 0.34 && currentHeight < 2.2) return null;
       if (entryDoor.isOpen && x > -1.3 && x < 1.3 && z > 5.55 && z < 6.55) return 0;
       if (
         currentHeight > 2.2 &&
         ((x > -5.72 && x < 5.72 && z > -4.72 && z < 5.72) ||
           (x > -2.4 && x < 2.4 && z > -20.48 && z < -0.24) ||
-          (silasRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24) ||
+          (arenRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24) ||
           (upstairsTenantDoor.isOpen && x > 1.9 && x < 4.12 && z > -20.18 && z < -12.25) ||
           (finalDoor.isOpen && x > -3.5 && x < 3.5 && z > -29.3 && z < -20.48))
       ) return 3.16;
@@ -457,26 +465,31 @@ export function buildHouseDemo(
       const upstairs = floorHeight > 2.2;
       if (upstairs) {
         const landing = z > 0.24 && z < 5.72 && x > -5.72 && x < 5.72;
-        const protagonistRoom = x > -5.72 && x < -1.9 && z > -4.72 && z < -0.24;
-        const silasRoom = silasRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24;
-        const silasRoomEntrance =
-          silasRoomDoor.isOpen && x > 1.85 && x < 2.55 && z > -3.75 && z < -1.35;
+        const protagonistRoom = protagonistRoomDoor.isOpen && x > -5.72 && x < -1.9 && z > -4.72 && z < -0.24;
+        const protagonistRoomPassage =
+          protagonistRoomDoor.isOpen && x > -2.55 && x < -1.85 && z > -3.75 && z < -1.35;
+        const arenRoom = arenRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24;
+        const arenRoomEntrance =
+          arenRoomDoor.isOpen && x > 1.85 && x < 2.55 && z > -3.75 && z < -1.35;
         const upperEntryPassage = upperEntryDoor.isOpen && x > -1.18 && x < 1.18 && z >= -0.24 && z <= 0.24;
         const upperCorridor = x > -2.05 && x < 2.05 && z > -20.48 && z < -0.24;
         const tenantRoom = upstairsTenantDoor.isOpen && x > 1.9 && x < 4.12 && z > -20.18 && z < -12.25;
         const upstairsTenantPassage =
           upstairsTenantDoor.isOpen && x > 1.9 && x < 2.55 && z >= -16.75 && z <= -14.35;
+        const stairLanding = x > 3.4 && x < 5.72 && z > 0.12 && z < 5.72;
         const inUpperFinalRoom = finalDoor.isOpen && x > -3.5 && x < 3.5 && z > -29.3 && z < -20.48;
         const passesUpperFinalDoor = finalDoor.isOpen && x > -1.15 && x < 1.15 && z > -20.55 && z < -20.05;
         const insideUpperFloor =
           landing ||
           protagonistRoom ||
-          silasRoom ||
-          silasRoomEntrance ||
+          protagonistRoomPassage ||
+          arenRoom ||
+          arenRoomEntrance ||
           upperEntryPassage ||
           upperCorridor ||
           tenantRoom ||
           upstairsTenantPassage ||
+          stairLanding ||
           inUpperFinalRoom ||
           passesUpperFinalDoor;
         return insideUpperFloor && !upperObstacles.some(
@@ -524,11 +537,12 @@ export function buildHouseDemo(
       storyDoors.tenantStudy = open;
       tenantStudyDoor.setOpen(open);
     },
-    setSilasRoomAvailable: (available) => {
-      storyDoors.silasRoom = available;
-      scene.userData.silasRoomAvailable = available;
+    setArenRoomAvailable: (available) => {
+      storyDoors.arenRoom = available;
+      scene.userData.arenRoomAvailable = available;
     },
-    setSilasRoomDoorOpen: (open) => silasRoomDoor.setOpen(open),
+    setArenRoomDoorOpen: (open) => arenRoomDoor.setOpen(open),
+    setProtagonistRoomDoorOpen: (open) => protagonistRoomDoor.setOpen(open),
     setStoneCollected: (collected) => {
       const stone = storyPropObjects.get("stone");
       if (!stone) throw new Error("The rescue stone prop is missing from the house.");
@@ -582,27 +596,60 @@ function addUpperStory(
   addBox(scene, plaster, 4.6, 3.15, 0.16, 3.5, 4.83, 0.08, true);
   addBox(scene, plaster, 2.3, 0.65, 0.16, 0, 6.07, 0.08, true);
 
+  const landingGlass = new THREE.MeshStandardMaterial({
+    color: "#7896a4",
+    emissive: "#283f4a",
+    emissiveIntensity: 0.5,
+    roughness: 0.18,
+    metalness: 0.25,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide,
+  });
+  const landingWindowFrame = new THREE.MeshStandardMaterial({ color: "#49382c", roughness: 0.86 });
+  addBox(scene, landingGlass, 2.92, 2.42, 0.045, 0, 4.56, 6.08, false);
+  for (const x of [-1.54, 0, 1.54]) {
+    addBox(scene, landingWindowFrame, 0.11, 2.56, 0.12, x, 4.56, 6.12, false);
+  }
+  for (const y of [3.27, 4.56, 5.85]) {
+    addBox(scene, landingWindowFrame, 3.12, 0.11, 0.12, 0, y, 6.12, false);
+  }
   for (const x of [-2.15, 2.15]) {
     for (const z of [-4.12, -0.98]) {
       addBox(scene, plaster, 0.16, 3.15, 1.12, x, 4.83, z, true);
     }
   }
   const upperTrim = new THREE.MeshStandardMaterial({ color: "#49382c", roughness: 0.86 });
-  for (const x of [-2.15, 2.15]) {
-    addBox(scene, upperTrim, 0.17, 2.5, 0.14, x, 4.5, -2.55, true);
-  }
   addBox(scene, upperTrim, 0.16, 0.15, 2.2, -2.15, 5.72, -2.55, false);
   addBox(scene, upperTrim, 0.16, 0.15, 2.2, 2.15, 5.72, -2.55, false);
   addBox(scene, darkWood, 5.2, 0.09, 0.12, 0, 3.34, -4.7, false);
   addBox(scene, darkWood, 5.2, 0.09, 0.12, 0, 3.34, 4.7, false);
   const landingRunner = new THREE.MeshStandardMaterial({ color: "#38413d", roughness: 0.98 });
-  addBox(scene, landingRunner, 2.7, 0.025, 2.5, 2.0, 3.27, 1.05, false);
+  addBox(scene, landingRunner, 2.7, 0.025, 2.5, 2.0, 3.155, 1.05, false);
 
   for (let index = 0; index < 14; index += 1) {
     const stepZ = 4.55 - index * 0.32;
     const stepY = 0.12 + index * 0.225;
     addBox(scene, wood, 1.72, 0.13, 0.38, 4.55, stepY, stepZ, true);
   }
+  const stairSide = new THREE.Shape();
+  stairSide.moveTo(0, 0);
+  stairSide.lineTo(4.16, 0);
+  stairSide.lineTo(4.16, 3.16);
+  stairSide.closePath();
+  const stairSideWall = new THREE.Mesh(
+    new THREE.ShapeGeometry(stairSide),
+    new THREE.MeshStandardMaterial({
+      color: "#746d60",
+      roughness: 0.96,
+      side: THREE.DoubleSide,
+    }),
+  );
+  stairSideWall.position.set(3.56, 0.02, 4.55);
+  stairSideWall.rotation.y = Math.PI / 2;
+  stairSideWall.castShadow = true;
+  stairSideWall.receiveShadow = true;
+  scene.add(stairSideWall);
   const railMaterial = new THREE.MeshStandardMaterial({ color: "#49382c", roughness: 0.86 });
   for (const x of [3.62, 5.48]) {
     const rail = addBox(scene, railMaterial, 0.075, 0.075, 5.1, x, 1.72, 2.42, true);
@@ -619,21 +666,22 @@ function addUpperStory(
   addBox(scene, darkWood, 0.7, 0.76, 0.58, -3.05, 3.56, -0.65, true);
   addBox(scene, wood, 1.25, 0.92, 0.55, -5.0, 3.65, -1.0, true);
   addBox(scene, cream, 1.3, 0.08, 0.6, -5.0, 4.14, -1.0, false);
-  const silasRug = new THREE.MeshStandardMaterial({ color: "#46504a", roughness: 0.98 });
-  const silasBlanket = new THREE.MeshStandardMaterial({ color: "#59635d", roughness: 0.98 });
-  addBox(scene, silasRug, 2.8, 0.025, 3.0, 4.5, 3.2, -2.65, false);
+  const bedroomRug = new THREE.MeshStandardMaterial({ color: "#3f4946", roughness: 0.98 });
+  addBox(scene, bedroomRug, 2.75, 0.025, 2.85, -4.05, 3.155, -2.75, false);
+  const arenRug = new THREE.MeshStandardMaterial({ color: "#46504a", roughness: 0.98 });
+  const arenBlanket = new THREE.MeshStandardMaterial({ color: "#59635d", roughness: 0.98 });
+  addBox(scene, arenRug, 2.45, 0.025, 2.8, 4.45, 3.155, -2.65, false);
   addBox(scene, darkWood, 1.82, 0.44, 2.1, 4.5, 3.42, -2.65, true);
   addBox(scene, cream, 1.77, 0.17, 2.0, 4.5, 3.72, -2.65, true);
-  addBox(scene, silasBlanket, 1.78, 0.13, 1.05, 4.5, 3.86, -2.95, true);
+  addBox(scene, arenBlanket, 1.78, 0.13, 1.05, 4.5, 3.86, -2.95, true);
   addBox(scene, darkWood, 1.82, 0.9, 0.16, 4.5, 3.73, -1.62, true);
   addBox(scene, cream, 0.72, 0.16, 0.44, 4.5, 3.84, -1.95, false);
   addBox(scene, darkWood, 0.56, 0.42, 0.5, 3.1, 3.39, -1.2, true);
   addBox(scene, cream, 0.58, 0.045, 0.52, 3.1, 3.63, -1.2, false);
   const keepsake = new THREE.MeshStandardMaterial({ color: "#8e7860", roughness: 0.86 });
-  addBox(scene, keepsake, 0.28, 0.34, 0.025, 3.1, 3.83, -1.2, false);
-  const silasLight = new THREE.PointLight("#d0a779", 1.8, 5.5, 2);
-  silasLight.position.set(3.1, 4.06, -1.2);
-  scene.add(silasLight);
+  addBox(scene, keepsake, 0.28, 0.34, 0.025, 2.93, 3.83, -1.0, false);
+  addUpperTableLamp(scene, 3.1, 3.66, -1.2, "#d0a779", 1.5);
+  addUpperTableLamp(scene, -3.05, 3.95, -0.65, "#cba877", 1.05);
   addBox(scene, darkWood, 1.8, 0.16, 0.55, 3.3, 3.34, -3.9, true);
   addBox(scene, cream, 0.82, 0.68, 0.7, 3.3, 3.72, -3.9, true);
   const tenantBooks = ["#645443", "#6f6351", "#4a514d", "#80674e"];
@@ -654,6 +702,9 @@ function addUpperStory(
   const upperSconce = new THREE.PointLight("#c4a17b", 1.15, 4.5, 2);
   upperSconce.position.set(1.7, 5.3, -0.1);
   scene.add(upperSconce);
+  addUpperWallSconce(scene, 2.07, 5.18, -0.1);
+  addUpperWallSconce(scene, 2.07, 5.18, -7.4);
+  addUpperWallSconce(scene, 2.07, 5.18, -11.6);
   obstacles.push(
     { minX: -5.22, maxX: -3.08, minZ: -4.03, maxZ: -1.77 },
     { minX: -3.37, maxX: -2.73, minZ: -0.94, maxZ: -0.36 },
@@ -666,6 +717,9 @@ function addUpperStory(
     { minX: 2.07, maxX: 2.23, minZ: -4.72, maxZ: -3.75 },
     { minX: 2.07, maxX: 2.23, minZ: -1.35, maxZ: -0.24 },
   );
+  for (const x of [-2.15, 2.15]) {
+    addBox(scene, plaster, 0.16, 3.15, 0.14, x, 4.83, -4.74, true);
+  }
 }
 
 function addUpperMysteryWing(
@@ -1937,6 +1991,45 @@ function addPracticalLight(
   light.userData.baseIntensity = intensity;
   scene.add(light);
   environment.addPractical(light);
+}
+
+function addUpperTableLamp(
+  scene: THREE.Scene,
+  x: number,
+  surfaceY: number,
+  z: number,
+  lightColor: string,
+  intensity: number,
+): void {
+  const metal = new THREE.MeshStandardMaterial({ color: "#806746", metalness: 0.55, roughness: 0.48 });
+  const shade = new THREE.MeshStandardMaterial({
+    color: "#b49a74",
+    emissive: lightColor,
+    emissiveIntensity: 0.28,
+    roughness: 0.82,
+    side: THREE.DoubleSide,
+  });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.035, 12), metal);
+  base.position.set(x, surfaceY + 0.018, z);
+  scene.add(base);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.2, 8), metal);
+  stem.position.set(x, surfaceY + 0.13, z);
+  scene.add(stem);
+  const lampshade = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.23, 0.22, 12, 1, true), shade);
+  lampshade.position.set(x, surfaceY + 0.32, z);
+  scene.add(lampshade);
+  const light = new THREE.PointLight(lightColor, intensity, 4.5, 2);
+  light.position.set(x, surfaceY + 0.27, z);
+  scene.add(light);
+}
+
+function addUpperWallSconce(scene: THREE.Scene, x: number, y: number, z: number): void {
+  const mount = new THREE.MeshStandardMaterial({ color: "#46382d", roughness: 0.82 });
+  const glow = new THREE.MeshBasicMaterial({ color: "#d7b78b" });
+  addBox(scene, mount, 0.055, 0.3, 0.2, x, y, z, false);
+  const shade = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), glow);
+  shade.position.set(x - 0.09, y - 0.01, z);
+  scene.add(shade);
 }
 
 function addPart(

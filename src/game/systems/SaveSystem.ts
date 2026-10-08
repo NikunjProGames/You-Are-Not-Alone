@@ -79,7 +79,10 @@ function renameStringRecord(record: Record<string, string>): Record<string, stri
 }
 
 function renameStoredName(value: string): string {
-  return value.replace(/mara/gi, (match) => (match[0] === "M" ? "Silas" : "silas"));
+  return value.replace(/mara|silas/gi, (match) => {
+    if (match === match.toUpperCase()) return "AREN";
+    return match[0] === match[0].toUpperCase() ? "Aren" : "aren";
+  });
 }
 
 function isStorySnapshot(value: unknown): value is StorySnapshot {

@@ -39,6 +39,7 @@ export interface DialogueChoice {
   label: string;
   next?: number;
   setFlag?: { key: string; value: StoryValue };
+  response?: DialogueLine;
 }
 
 export interface DialogueLine {

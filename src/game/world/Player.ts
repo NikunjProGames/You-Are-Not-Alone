@@ -11,6 +11,8 @@ export class Player {
   readonly camera = new THREE.PerspectiveCamera(68, 1, 0.08, 90);
   yaw = 0;
   pitch = 0;
+  private readonly movementForward = new THREE.Vector3();
+  private readonly movementRight = new THREE.Vector3();
   private readonly keys = new Set<string>();
   private touchX = 0;
   private touchY = 0;
@@ -104,10 +106,12 @@ export class Player {
     if (canMove) {
       const { moveX, moveY } = this.getInput();
       const speed = (this.keys.has("ShiftLeft") || this.keys.has("ShiftRight") ? 2.85 : 2.2) * delta;
-      const forward = this.camera.getWorldDirection(new THREE.Vector3());
+      const forward = this.camera.getWorldDirection(this.movementForward);
       forward.y = 0;
       forward.normalize();
-      const right = new THREE.Vector3().crossVectors(forward, THREE.Object3D.DEFAULT_UP).normalize();
+      const right = this.movementRight
+        .crossVectors(forward, THREE.Object3D.DEFAULT_UP)
+        .normalize();
       const dx = (forward.x * moveY + right.x * moveX) * speed;
       const dz = (forward.z * moveY + right.z * moveX) * speed;
       const nextX = this.position.x + dx;

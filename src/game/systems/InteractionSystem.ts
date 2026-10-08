@@ -9,6 +9,8 @@ export class InteractionSystem {
   private readonly button = required<HTMLButtonElement>("#mobile-interact");
   private current: Interactable | null = null;
   private readonly targets: Interactable[] = [];
+  private refreshElapsed = 0;
+  private readonly refreshInterval = 1 / 30;
 
   constructor(
     private readonly camera: THREE.Camera,
@@ -25,7 +27,11 @@ export class InteractionSystem {
     this.targets.push(target);
   }
 
-  update(): void {
+  update(delta: number): void {
+    this.refreshElapsed += delta;
+    if (this.refreshElapsed < this.refreshInterval) return;
+    this.refreshElapsed %= this.refreshInterval;
+
     this.raycaster.setFromCamera(this.center, this.camera);
     const active = this.targets.filter(
       (target) => (target.enabled?.() ?? true) && isVisible(target.object),
@@ -66,6 +72,7 @@ export class InteractionSystem {
   clearFocus(): void {
     this.current = null;
     this.prompt.hidden = true;
+    this.refreshElapsed = this.refreshInterval;
   }
 }
 

@@ -68,6 +68,16 @@ export class Game {
   private elapsed = 0;
   private lastFrame = 0;
   private objectiveTarget: THREE.Vector3 | null = null;
+  private readonly objectiveToTarget = new THREE.Vector3();
+  private readonly objectiveForward = new THREE.Vector3();
+  private pixelRatio = 0;
+  private pixelRatioCeiling = 1;
+  private qualityElapsed = 0;
+  private qualityFrameTime = 0;
+  private qualityFrames = 0;
+  private qualityRecoveryElapsed = 0;
+  private mobileQuality = window.matchMedia("(pointer: coarse)").matches;
+  private adaptiveShadowsDisabled = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -79,9 +89,8 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
-    this.renderer.shadowMap.enabled = !window.matchMedia("(pointer: coarse)").matches;
+    this.renderer.shadowMap.enabled = !this.mobileQuality;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
 
     this.player = new Player(
       canvas,
@@ -195,6 +204,7 @@ export class Game {
   private readonly frame = (now: number): void => {
     const delta = Math.min((now - this.lastFrame) / 1000, 0.05);
     this.lastFrame = now;
+    this.updateRenderQuality(delta);
     this.world.update(delta);
 
     if (
@@ -212,7 +222,7 @@ export class Game {
       );
       this.updateObjectiveDirection();
       if (!this.cinematics.active && !this.dialogues.isActive) {
-        this.interactions.update();
+        this.interactions.update(delta);
         this.events.update(this.player.position);
       } else {
         this.interactions.clearFocus();
@@ -242,8 +252,9 @@ export class Game {
     this.world.setEntryDoorOpen(false);
     this.world.setWestStoreOpen(false);
     this.world.setTenantStudyOpen(false);
-    this.world.setSilasRoomAvailable(false);
-    this.world.setSilasRoomDoorOpen(false);
+    this.world.setArenRoomAvailable(false);
+    this.world.setArenRoomDoorOpen(false);
+    this.world.setProtagonistRoomDoorOpen(false);
     this.world.setStoneCollected(false);
     this.world.setUpperEntryDoorOpen(true);
     this.world.setUpperTenantDoorOpen(false);
@@ -420,14 +431,14 @@ export class Game {
       this.objectiveDirection.hidden = true;
       return;
     }
-    const toTarget = target.clone().sub(this.player.position);
+    const toTarget = this.objectiveToTarget.subVectors(target, this.player.position);
     toTarget.y = 0;
     if (toTarget.lengthSq() < 10.24) {
       this.objectiveDirection.hidden = true;
       return;
     }
     toTarget.normalize();
-    const forward = this.player.camera.getWorldDirection(new THREE.Vector3());
+    const forward = this.player.camera.getWorldDirection(this.objectiveForward);
     forward.y = 0;
     forward.normalize();
     const angle = Math.atan2(
@@ -462,12 +473,69 @@ export class Game {
   private resize(): void {
     const width = Math.max(1, window.innerWidth);
     const height = Math.max(1, window.innerHeight);
-    const mobile = window.matchMedia("(pointer: coarse)").matches;
-    this.renderer.shadowMap.enabled = !mobile;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.15 : 1.6));
-    this.renderer.setSize(width, height, false);
+    this.mobileQuality = window.matchMedia("(pointer: coarse)").matches;
+    this.renderer.shadowMap.enabled = !this.mobileQuality && !this.adaptiveShadowsDisabled;
+    const pixelBudgetRatio = Math.sqrt(4_194_304 / (width * height));
+    this.pixelRatioCeiling = Math.min(
+      window.devicePixelRatio || 1,
+      this.mobileQuality ? 1.15 : 1.6,
+      pixelBudgetRatio,
+    );
+    this.pixelRatio = this.pixelRatio > 0
+      ? Math.min(this.pixelRatio, this.pixelRatioCeiling)
+      : this.pixelRatioCeiling;
+    this.applyRenderScale(width, height);
     this.player.camera.aspect = width / height;
     this.player.camera.updateProjectionMatrix();
+  }
+
+  private updateRenderQuality(delta: number): void {
+    this.qualityElapsed += delta;
+    this.qualityFrameTime += delta;
+    this.qualityFrames += 1;
+    if (this.qualityElapsed < 3) return;
+
+    const averageFrameTime = this.qualityFrameTime / this.qualityFrames;
+    this.qualityElapsed = 0;
+    this.qualityFrameTime = 0;
+    this.qualityFrames = 0;
+
+    if (averageFrameTime > 0.021 && this.pixelRatio > 0.75) {
+      this.qualityRecoveryElapsed = 0;
+      this.pixelRatio = Math.max(0.75, this.pixelRatio - 0.1);
+      this.applyRenderScale(window.innerWidth, window.innerHeight);
+      return;
+    }
+    if (averageFrameTime > 0.021 && !this.mobileQuality && this.renderer.shadowMap.enabled) {
+      this.qualityRecoveryElapsed = 0;
+      this.adaptiveShadowsDisabled = true;
+      this.renderer.shadowMap.enabled = false;
+      return;
+    }
+    if (averageFrameTime < 0.017 && this.pixelRatio < this.pixelRatioCeiling) {
+      this.qualityRecoveryElapsed += 3;
+      if (this.qualityRecoveryElapsed >= 9) {
+        this.qualityRecoveryElapsed = 0;
+        this.pixelRatio = Math.min(this.pixelRatioCeiling, this.pixelRatio + 0.05);
+        this.applyRenderScale(window.innerWidth, window.innerHeight);
+      }
+      return;
+    }
+    if (averageFrameTime < 0.0155 && this.adaptiveShadowsDisabled) {
+      this.qualityRecoveryElapsed += 3;
+      if (this.qualityRecoveryElapsed >= 9) {
+        this.qualityRecoveryElapsed = 0;
+        this.adaptiveShadowsDisabled = false;
+        this.renderer.shadowMap.enabled = !this.mobileQuality;
+      }
+      return;
+    }
+    this.qualityRecoveryElapsed = 0;
+  }
+
+  private applyRenderScale(width: number, height: number): void {
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.renderer.setSize(width, height, false);
   }
 }
 
