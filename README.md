@@ -22,13 +22,6 @@ Play: [YOU ARE NOT ALONE](https://nikunjprogames.github.io/You-Are-Not-Alone/)
 
 Requires Node.js and npm.
 
-```sh
-npm install
-npm run dev
-npm run typecheck
-npm run build
-```
-
 Use the local URL printed by Vite. The app is a static Three.js + TypeScript + Vite project; it has no backend or third-party runtime service. Production output is written to `dist/` and is configured for the GitHub Pages repository path. Set `VITE_BASE_PATH=/` for a root-domain deployment.
 
 ## Project notes

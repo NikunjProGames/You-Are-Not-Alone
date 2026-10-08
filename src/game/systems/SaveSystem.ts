@@ -1,4 +1,4 @@
-import type { StorySnapshot } from "../types";
+import type { StorySnapshot, StoryValue } from "../types";
 
 const STORAGE_KEY = "you-are-not-alone:checkpoint";
 const SAVE_VERSION = 1;
@@ -29,7 +29,7 @@ export class SaveSystem {
         console.warn("The local save is invalid or from an unsupported version.");
         return null;
       }
-      return structuredClone(value);
+      return migrateFriendName(structuredClone(value));
     } catch (error) {
       console.error("Unable to parse the local save.", error);
       return null;
@@ -53,6 +53,33 @@ export class SaveSystem {
       console.error("Unable to clear the local save.", error);
     }
   }
+}
+
+function migrateFriendName(snapshot: StorySnapshot): StorySnapshot {
+  snapshot.flags = renameFlagRecord(snapshot.flags);
+  snapshot.choices = renameStringRecord(snapshot.choices);
+  snapshot.discoveries = snapshot.discoveries.map(renameStoredName);
+  snapshot.completedEvents = snapshot.completedEvents.map(renameStoredName);
+  return snapshot;
+}
+
+function renameFlagRecord(flags: Record<string, StoryValue>): Record<string, StoryValue> {
+  return Object.fromEntries(
+    Object.entries(flags).map(([key, value]) => [
+      renameStoredName(key),
+      typeof value === "string" ? renameStoredName(value) : value,
+    ]),
+  );
+}
+
+function renameStringRecord(record: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [renameStoredName(key), renameStoredName(value)]),
+  );
+}
+
+function renameStoredName(value: string): string {
+  return value.replace(/mara/gi, (match) => (match[0] === "M" ? "Silas" : "silas"));
 }
 
 function isStorySnapshot(value: unknown): value is StorySnapshot {

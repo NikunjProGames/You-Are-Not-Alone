@@ -242,8 +242,9 @@ export class Game {
     this.world.setEntryDoorOpen(false);
     this.world.setWestStoreOpen(false);
     this.world.setTenantStudyOpen(false);
-    this.world.setMaraRoomAvailable(false);
-    this.world.setMaraRoomDoorOpen(false);
+    this.world.setSilasRoomAvailable(false);
+    this.world.setSilasRoomDoorOpen(false);
+    this.world.setStoneCollected(false);
     this.world.setUpperEntryDoorOpen(true);
     this.world.setUpperTenantDoorOpen(false);
     this.world.entity.visible = false;

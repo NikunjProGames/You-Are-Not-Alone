@@ -22,8 +22,9 @@ export interface HouseDemo {
   setWestStoreOpen: (open: boolean) => void;
   setTenantStudyOpen: (open: boolean) => void;
   setEntryDoorOpen: (open: boolean) => void;
-  setMaraRoomAvailable: (available: boolean) => void;
-  setMaraRoomDoorOpen: (open: boolean) => void;
+  setSilasRoomAvailable: (available: boolean) => void;
+  setSilasRoomDoorOpen: (open: boolean) => void;
+  setStoneCollected: (collected: boolean) => void;
   setUpperEntryDoorOpen: (open: boolean) => void;
   setUpperTenantDoorOpen: (open: boolean) => void;
   setFinaleFlicker: (active: boolean) => void;
@@ -62,11 +63,12 @@ export function buildHouseDemo(
     opacity: 0.48,
   });
   const interactables: Interactable[] = [];
+  const storyPropObjects = new Map<string, THREE.Object3D>();
   const characters: THREE.Group[] = [];
   const obstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> = [];
   const upperObstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> = [];
   const windObjects: Array<{ object: THREE.Object3D; base: number; phase: number; amount: number }> = [];
-  const storyDoors = { westStore: false, tenantStudy: false, maraRoom: false };
+  const storyDoors = { westStore: false, tenantStudy: false, silasRoom: false };
 
   const hemi = new THREE.HemisphereLight("#b2c5d0", "#3a3327", 1.04);
   scene.add(hemi);
@@ -188,14 +190,41 @@ export function buildHouseDemo(
   backRoomLight.userData.baseIntensity = backRoomLight.intensity;
   scene.add(backRoomLight);
   environment.addPractical(backRoomLight);
-  const housemate = createDemoFigure();
+  const housemate = createDemoFigure({
+    coatColor: "#35463f",
+    shirtColor: "#80634b",
+    skinColor: "#b18469",
+    hairColor: "#20191b",
+    trousersColor: "#342d32",
+    hairStyle: "long",
+    scaleX: 0.96,
+    scaleY: 0.97,
+  });
   housemate.visible = false;
   characters.push(housemate);
-  const tenant = createDemoFigure("#282d32", "#797263", "#886e5d");
+  const tenant = createDemoFigure({
+    coatColor: "#292e34",
+    shirtColor: "#b0a895",
+    skinColor: "#99806d",
+    hairColor: "#77766f",
+    trousersColor: "#25282b",
+    hairStyle: "receding",
+    scaleX: 1.12,
+    scaleY: 1.04,
+  });
   tenant.position.set(-1.5, 0, 3.1);
   tenant.rotation.y = 0;
   characters.push(tenant);
-  const entity = createDemoFigure("#393d3b", "#87806e", "#a18470");
+  const entity = createDemoFigure({
+    coatColor: "#393d3b",
+    shirtColor: "#87806e",
+    skinColor: "#a18470",
+    hairColor: "#282421",
+    trousersColor: "#282b2a",
+    hairStyle: "short",
+    scaleX: 1,
+    scaleY: 1,
+  });
   entity.name = "revealed-entity";
   entity.position.set(0, 3.16, -24.7);
   entity.scale.set(1.16, 1.24, 1.08);
@@ -279,7 +308,7 @@ export function buildHouseDemo(
     () => entryDoor.isOpen ? "Close the front door" : "Open the front door",
     entryDoor,
   ));
-  addEpisodeProps(scene, interactables, onStoryInteraction, [
+  addEpisodeProps(scene, interactables, onStoryInteraction, storyPropObjects, [
     { id: "bills", position: [-0.42, 0.61, 0.12], color: "#b8aa8f", size: [0.42, 0.018, 0.3] },
     { id: "fire-photo", position: [-5.53, 1.1, -1.78], color: "#6b6050", size: [0.08, 0.48, 0.38] },
     { id: "laundry-blood", position: [-4.9, 0.08, -6.2], color: "#664b42", size: [0.25, 0.06, 0.28] },
@@ -339,7 +368,7 @@ export function buildHouseDemo(
   }
   const upperEntryDoor = makeCustomPassageDoor(scene, wood, brass, 0.08, 3.16);
   upperEntryDoor.setOpen(true);
-  const maraRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16);
+  const silasRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16);
   const upstairsTenantDoor = makeSideDoor(scene, wood, brass, 2.15, -15.55, 1, 3.16);
   interactables.push(
     makeDoorInteractable(
@@ -348,11 +377,11 @@ export function buildHouseDemo(
       upperEntryDoor,
     ),
     {
-      id: "episode-mara-room",
-      prompt: () => maraRoomDoor.isOpen ? "Check Mara's room" : "Knock on Mara's door",
-      object: maraRoomDoor.panel,
-      enabled: () => scene.userData.maraRoomAvailable === true,
-      interact: () => onStoryInteraction("mara-room-door"),
+      id: "episode-silas-room",
+      prompt: () => silasRoomDoor.isOpen ? "Check Silas's room" : "Knock on Silas's door",
+      object: silasRoomDoor.panel,
+      enabled: () => scene.userData.silasRoomAvailable === true,
+      interact: () => onStoryInteraction("silas-room-door"),
     },
     makeDoorInteractable(
       "episode-upstairs-tenant-room",
@@ -380,7 +409,7 @@ export function buildHouseDemo(
       finalDoor.update(delta);
       entryDoor.update(delta);
       upperEntryDoor.update(delta);
-      maraRoomDoor.update(delta);
+      silasRoomDoor.update(delta);
       upstairsTenantDoor.update(delta);
       if (finaleFlicker) {
         finaleElapsed += delta;
@@ -398,7 +427,7 @@ export function buildHouseDemo(
         currentHeight > 2.2 &&
         ((x > -5.72 && x < 5.72 && z > -4.72 && z < 5.72) ||
           (x > -2.4 && x < 2.4 && z > -20.48 && z < -0.24) ||
-          (maraRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24) ||
+          (silasRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24) ||
           (upstairsTenantDoor.isOpen && x > 1.9 && x < 4.12 && z > -20.18 && z < -12.25) ||
           (finalDoor.isOpen && x > -3.5 && x < 3.5 && z > -29.3 && z < -20.48))
       ) return 3.16;
@@ -429,7 +458,9 @@ export function buildHouseDemo(
       if (upstairs) {
         const landing = z > 0.24 && z < 5.72 && x > -5.72 && x < 5.72;
         const protagonistRoom = x > -5.72 && x < -1.9 && z > -4.72 && z < -0.24;
-        const maraRoom = maraRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24;
+        const silasRoom = silasRoomDoor.isOpen && x > 1.9 && x < 5.72 && z > -4.72 && z < -0.24;
+        const silasRoomEntrance =
+          silasRoomDoor.isOpen && x > 1.85 && x < 2.55 && z > -3.75 && z < -1.35;
         const upperEntryPassage = upperEntryDoor.isOpen && x > -1.18 && x < 1.18 && z >= -0.24 && z <= 0.24;
         const upperCorridor = x > -2.05 && x < 2.05 && z > -20.48 && z < -0.24;
         const tenantRoom = upstairsTenantDoor.isOpen && x > 1.9 && x < 4.12 && z > -20.18 && z < -12.25;
@@ -440,7 +471,8 @@ export function buildHouseDemo(
         const insideUpperFloor =
           landing ||
           protagonistRoom ||
-          maraRoom ||
+          silasRoom ||
+          silasRoomEntrance ||
           upperEntryPassage ||
           upperCorridor ||
           tenantRoom ||
@@ -492,11 +524,16 @@ export function buildHouseDemo(
       storyDoors.tenantStudy = open;
       tenantStudyDoor.setOpen(open);
     },
-    setMaraRoomAvailable: (available) => {
-      storyDoors.maraRoom = available;
-      scene.userData.maraRoomAvailable = available;
+    setSilasRoomAvailable: (available) => {
+      storyDoors.silasRoom = available;
+      scene.userData.silasRoomAvailable = available;
     },
-    setMaraRoomDoorOpen: (open) => maraRoomDoor.setOpen(open),
+    setSilasRoomDoorOpen: (open) => silasRoomDoor.setOpen(open),
+    setStoneCollected: (collected) => {
+      const stone = storyPropObjects.get("stone");
+      if (!stone) throw new Error("The rescue stone prop is missing from the house.");
+      stone.visible = !collected;
+    },
     setUpperEntryDoorOpen: (open) => upperEntryDoor.setOpen(open),
     setUpperTenantDoorOpen: (open) => upstairsTenantDoor.setOpen(open),
     setFinaleFlicker: (active) => {
@@ -582,36 +619,38 @@ function addUpperStory(
   addBox(scene, darkWood, 0.7, 0.76, 0.58, -3.05, 3.56, -0.65, true);
   addBox(scene, wood, 1.25, 0.92, 0.55, -5.0, 3.65, -1.0, true);
   addBox(scene, cream, 1.3, 0.08, 0.6, -5.0, 4.14, -1.0, false);
-  const maraRug = new THREE.MeshStandardMaterial({ color: "#46504a", roughness: 0.98 });
-  const maraBlanket = new THREE.MeshStandardMaterial({ color: "#59635d", roughness: 0.98 });
-  addBox(scene, maraRug, 3.25, 0.025, 3.35, 3.8, 3.2, -2.65, false);
-  addBox(scene, darkWood, 1.82, 0.44, 2.1, 3.8, 3.42, -2.65, true);
-  addBox(scene, cream, 1.77, 0.17, 2.0, 3.8, 3.72, -2.65, true);
-  addBox(scene, maraBlanket, 1.78, 0.13, 1.05, 3.8, 3.86, -2.95, true);
-  addBox(scene, cream, 0.72, 0.16, 0.44, 3.8, 3.84, -1.95, false);
-  addBox(scene, darkWood, 0.56, 0.42, 0.5, 4.9, 3.39, -1.92, true);
-  addBox(scene, cream, 0.58, 0.045, 0.52, 4.9, 3.63, -1.92, false);
+  const silasRug = new THREE.MeshStandardMaterial({ color: "#46504a", roughness: 0.98 });
+  const silasBlanket = new THREE.MeshStandardMaterial({ color: "#59635d", roughness: 0.98 });
+  addBox(scene, silasRug, 2.8, 0.025, 3.0, 4.5, 3.2, -2.65, false);
+  addBox(scene, darkWood, 1.82, 0.44, 2.1, 4.5, 3.42, -2.65, true);
+  addBox(scene, cream, 1.77, 0.17, 2.0, 4.5, 3.72, -2.65, true);
+  addBox(scene, silasBlanket, 1.78, 0.13, 1.05, 4.5, 3.86, -2.95, true);
+  addBox(scene, darkWood, 1.82, 0.9, 0.16, 4.5, 3.73, -1.62, true);
+  addBox(scene, cream, 0.72, 0.16, 0.44, 4.5, 3.84, -1.95, false);
+  addBox(scene, darkWood, 0.56, 0.42, 0.5, 3.1, 3.39, -1.2, true);
+  addBox(scene, cream, 0.58, 0.045, 0.52, 3.1, 3.63, -1.2, false);
   const keepsake = new THREE.MeshStandardMaterial({ color: "#8e7860", roughness: 0.86 });
-  addBox(scene, keepsake, 0.28, 0.34, 0.025, 4.9, 3.83, -1.92, false);
-  const maraLight = new THREE.PointLight("#d0a779", 1.8, 5.5, 2);
-  maraLight.position.set(4.9, 4.06, -1.92);
-  scene.add(maraLight);
+  addBox(scene, keepsake, 0.28, 0.34, 0.025, 3.1, 3.83, -1.2, false);
+  const silasLight = new THREE.PointLight("#d0a779", 1.8, 5.5, 2);
+  silasLight.position.set(3.1, 4.06, -1.2);
+  scene.add(silasLight);
   addBox(scene, darkWood, 1.8, 0.16, 0.55, 3.3, 3.34, -3.9, true);
   addBox(scene, cream, 0.82, 0.68, 0.7, 3.3, 3.72, -3.9, true);
   const tenantBooks = ["#645443", "#6f6351", "#4a514d", "#80674e"];
   tenantBooks.forEach((color, index) => {
+    const height = 0.25 + (index % 2) * 0.07;
     const book = new THREE.Mesh(
-      new THREE.BoxGeometry(0.13, 0.25 + (index % 2) * 0.07, 0.17),
+      new THREE.BoxGeometry(0.13, height, 0.17),
       new THREE.MeshStandardMaterial({ color, roughness: 0.95 }),
     );
-    book.position.set(2.75 + index * 0.17, 3.87, -3.72);
+    book.position.set(3.0 + index * 0.16, 4.06 + height / 2, -3.9);
     scene.add(book);
   });
   const tenantChair = new THREE.MeshStandardMaterial({ color: "#454943", roughness: 0.94 });
-  addBox(scene, tenantChair, 0.56, 0.13, 0.56, 3.15, 3.52, -4.05, true);
-  addBox(scene, tenantChair, 0.56, 0.66, 0.12, 3.15, 3.87, -3.79, true);
+  addBox(scene, tenantChair, 0.56, 0.13, 0.56, 3.1, 3.52, -3.2, true);
+  addBox(scene, tenantChair, 0.56, 0.66, 0.12, 3.1, 3.87, -2.94, true);
   const tenantWardrobe = new THREE.MeshStandardMaterial({ color: "#453a31", roughness: 0.9 });
-  addBox(scene, tenantWardrobe, 0.92, 1.75, 0.62, 5.18, 4.0, -3.9, true);
+  addBox(scene, tenantWardrobe, 0.92, 1.75, 0.62, 5.18, 4.0, -0.92, true);
   const upperSconce = new THREE.PointLight("#c4a17b", 1.15, 4.5, 2);
   upperSconce.position.set(1.7, 5.3, -0.1);
   scene.add(upperSconce);
@@ -620,8 +659,8 @@ function addUpperStory(
     { minX: -3.37, maxX: -2.73, minZ: -0.94, maxZ: -0.36 },
     { minX: -5.65, maxX: -4.35, minZ: -1.33, maxZ: -0.67 },
     { minX: 2.4, maxX: 4.25, minZ: -4.25, maxZ: -3.55 },
-    { minX: 3.0, maxX: 4.6, minZ: -3.8, maxZ: -1.5 },
-    { minX: 4.6, maxX: 5.25, minZ: -2.2, maxZ: -1.65 },
+    { minX: 3.8, maxX: 5.65, minZ: -4.05, maxZ: -1.25 },
+    { minX: 2.72, maxX: 3.48, minZ: -1.55, maxZ: -0.85 },
     { minX: -2.23, maxX: -2.07, minZ: -4.72, maxZ: -3.75 },
     { minX: -2.23, maxX: -2.07, minZ: -1.35, maxZ: -0.24 },
     { minX: 2.07, maxX: 2.23, minZ: -4.72, maxZ: -3.75 },
@@ -1180,6 +1219,7 @@ function addLivingRoom(
     scene: THREE.Scene,
     interactables: Interactable[],
     onStoryInteraction: (id: string) => void,
+    storyPropObjects: Map<string, THREE.Object3D>,
     props: Array<{
       id: string;
       position: [number, number, number];
@@ -1202,9 +1242,10 @@ function addLivingRoom(
       object.castShadow = true;
       object.userData.storyProp = prop.id;
       scene.add(object);
+      storyPropObjects.set(prop.id, object);
       interactables.push({
         id: `episode-${prop.id}`,
-        prompt: `Inspect ${prop.id.replaceAll("-", " ")}`,
+        prompt: prop.id === "stone" ? "Take the stone" : `Inspect ${prop.id.replaceAll("-", " ")}`,
         object,
         interact: () => onStoryInteraction(prop.id),
       });
@@ -1422,20 +1463,28 @@ function addLamp(scene: THREE.Scene, environment: EnvironmentSystem, brass: THRE
   environment.addPractical(glow);
 }
 
-function createDemoFigure(
-  coatColor = "#393d3b",
-  shirtColor = "#87806e",
-  skinColor = "#a18470",
-): THREE.Group {
+interface FigureAppearance {
+  coatColor: string;
+  shirtColor: string;
+  skinColor: string;
+  hairColor: string;
+  trousersColor: string;
+  hairStyle: "long" | "receding" | "short";
+  scaleX: number;
+  scaleY: number;
+}
+
+function createDemoFigure(appearance: FigureAppearance): THREE.Group {
   const group = new THREE.Group();
   group.name = "demo-figure-interaction";
   group.position.set(0.88, 0, -7.25);
   group.rotation.y = 0;
-  const coat = new THREE.MeshStandardMaterial({ color: coatColor, roughness: 0.92 });
-  const shirt = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.93 });
-  const skin = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.79 });
-  const hair = new THREE.MeshStandardMaterial({ color: "#282421", roughness: 0.98 });
-  const trousers = new THREE.MeshStandardMaterial({ color: "#282b2a", roughness: 0.97 });
+  group.scale.set(appearance.scaleX, appearance.scaleY, 1);
+  const coat = new THREE.MeshStandardMaterial({ color: appearance.coatColor, roughness: 0.92 });
+  const shirt = new THREE.MeshStandardMaterial({ color: appearance.shirtColor, roughness: 0.93 });
+  const skin = new THREE.MeshStandardMaterial({ color: appearance.skinColor, roughness: 0.79 });
+  const hair = new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: 0.98 });
+  const trousers = new THREE.MeshStandardMaterial({ color: appearance.trousersColor, roughness: 0.97 });
   const eyes = new THREE.MeshStandardMaterial({ color: "#dfd1bb", roughness: 0.7 });
   const iris = new THREE.MeshStandardMaterial({ color: "#53605c", roughness: 0.56 });
   const dark = new THREE.MeshStandardMaterial({ color: "#29231f", roughness: 0.93 });
@@ -1468,9 +1517,35 @@ function createDemoFigure(
   addPart(group, new THREE.CylinderGeometry(0.09, 0.1, 0.2, 12), shirt, 0, 1.59, 0);
   addPart(group, new THREE.SphereGeometry(0.195, 22, 18), skin, 0, 1.78, 0.015);
 
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.199, 20, 14, 0, Math.PI * 2, 0, 1.33), hair);
+  const hairCap = new THREE.Mesh(
+    new THREE.SphereGeometry(
+      appearance.hairStyle === "long" ? 0.21 : 0.205,
+      20,
+      14,
+      0,
+      Math.PI * 2,
+      0,
+      appearance.hairStyle === "long" ? 1.72 : appearance.hairStyle === "receding" ? 1.0 : 1.33,
+    ),
+    hair,
+  );
   hairCap.position.set(0, 1.81, -0.005);
   group.add(hairCap);
+  if (appearance.hairStyle === "long") {
+    for (const side of [-1, 1]) {
+      const lock = addPart(group, new THREE.CapsuleGeometry(0.052, 0.28, 4, 8), hair, side * 0.15, 1.62, -0.015);
+      lock.rotation.z = side * -0.08;
+    }
+    const scarf = new THREE.MeshStandardMaterial({ color: "#9b7750", roughness: 0.96 });
+    addPart(group, new THREE.BoxGeometry(0.3, 0.15, 0.24), scarf, 0, 1.49, 0.03);
+    addPart(group, new THREE.BoxGeometry(0.09, 0.34, 0.11), scarf, 0.12, 1.27, 0.1);
+  } else if (appearance.hairStyle === "receding") {
+    for (const side of [-1, 1]) {
+      addPart(group, new THREE.SphereGeometry(0.075, 12, 8), hair, side * 0.16, 1.73, -0.015);
+    }
+    const shoulders = addPart(group, new THREE.SphereGeometry(0.31, 14, 10), coat, 0, 1.38, 0);
+    shoulders.scale.set(1.36, 0.58, 0.86);
+  }
   addPart(group, new THREE.SphereGeometry(0.047, 10, 8), skin, -0.195, 1.77, 0);
   addPart(group, new THREE.SphereGeometry(0.047, 10, 8), skin, 0.195, 1.77, 0);
   addPart(group, new THREE.SphereGeometry(0.033, 10, 8), skin, 0, 1.742, 0.19);

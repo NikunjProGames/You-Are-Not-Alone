@@ -31,7 +31,7 @@ The door leads into a controlled cinematic. The camera changes perspective; the 
 
 Episode 1 ends shortly afterward. At least three meaningful ending variations must preserve this reveal and exact line.
 
-Target approximately 45–60 minutes over 3–4 in-game days. The job establishes ordinary life and financial pressure; it is not a full work simulator.
+Target approximately 30–45 minutes over 3–4 in-game days, with up to an hour acceptable for slower exploration. The job establishes ordinary life and financial pressure; it is not a full work simulator.
 
 ## Story and gameplay principles
 
