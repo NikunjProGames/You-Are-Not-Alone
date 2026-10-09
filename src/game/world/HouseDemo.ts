@@ -24,6 +24,7 @@ export interface HouseDemo {
   setEntryDoorOpen: (open: boolean) => void;
   setArenRoomAvailable: (available: boolean) => void;
   setArenRoomDoorOpen: (open: boolean) => void;
+  setHousemateCleaning: (cleaning: boolean) => void;
   setProtagonistRoomDoorOpen: (open: boolean) => void;
   setStoneCollected: (collected: boolean) => void;
   setUpperEntryDoorOpen: (open: boolean) => void;
@@ -192,24 +193,40 @@ export function buildHouseDemo(
   scene.add(backRoomLight);
   environment.addPractical(backRoomLight);
   const housemate = createDemoFigure({
+    faceStyle: "zayan",
     coatColor: "#35463f",
     shirtColor: "#80634b",
     skinColor: "#b18469",
     hairColor: "#20191b",
     trousersColor: "#342d32",
-    hairStyle: "short",
     scaleX: 0.96,
     scaleY: 0.97,
   });
+  const coatMark = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 10, 8),
+    new THREE.MeshStandardMaterial({ color: "#58322d", roughness: 1 }),
+  );
+  coatMark.position.set(-0.39, 1.08, 0.12);
+  coatMark.scale.set(1, 1.45, 0.28);
+  housemate.add(coatMark);
+  const cleaningCloth = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15, 0.045, 0.12),
+    new THREE.MeshStandardMaterial({ color: "#a49e8d", roughness: 1 }),
+  );
+  cleaningCloth.position.set(-0.42, 0.72, 0.12);
+  cleaningCloth.rotation.z = -0.22;
+  cleaningCloth.visible = false;
+  housemate.add(cleaningCloth);
+  let housemateCleaning = false;
   housemate.visible = false;
   characters.push(housemate);
   const tenant = createDemoFigure({
+    faceStyle: "tenant",
     coatColor: "#292e34",
     shirtColor: "#b0a895",
     skinColor: "#99806d",
     hairColor: "#77766f",
     trousersColor: "#25282b",
-    hairStyle: "receding",
     scaleX: 1.12,
     scaleY: 1.04,
   });
@@ -217,12 +234,12 @@ export function buildHouseDemo(
   tenant.rotation.y = 0;
   characters.push(tenant);
   const entity = createDemoFigure({
+    faceStyle: "protagonist",
     coatColor: "#393d3b",
     shirtColor: "#87806e",
     skinColor: "#a18470",
     hairColor: "#282421",
     trousersColor: "#282b2a",
-    hairStyle: "short",
     scaleX: 1,
     scaleY: 1,
   });
@@ -381,7 +398,7 @@ export function buildHouseDemo(
     ),
     {
       id: "episode-aren-room",
-      prompt: () => arenRoomDoor.isOpen ? "Check Aren's room" : "Knock on Aren's door",
+      prompt: () => arenRoomDoor.isOpen ? "Check Zayan's room" : "Knock on Zayan's door",
       object: arenRoomDoor.panel,
       enabled: () => scene.userData.arenRoomAvailable === true,
       interact: () => onStoryInteraction("aren-room-door"),
@@ -399,6 +416,9 @@ export function buildHouseDemo(
     interactables,
     update: (delta) => {
       const elapsed = performance.now() / 1000;
+      if (housemateCleaning) {
+        cleaningCloth.position.y = 0.72 + Math.sin(elapsed * 7) * 0.035;
+      }
       windObjects.forEach(({ object, base, phase, amount }) => {
         object.rotation.z = base + Math.sin(elapsed * 0.55 + phase) * amount;
       });
@@ -542,6 +562,11 @@ export function buildHouseDemo(
       scene.userData.arenRoomAvailable = available;
     },
     setArenRoomDoorOpen: (open) => arenRoomDoor.setOpen(open),
+    setHousemateCleaning: (cleaning) => {
+      housemateCleaning = cleaning;
+      cleaningCloth.visible = cleaning;
+      if (!cleaning) cleaningCloth.position.y = 0.72;
+    },
     setProtagonistRoomDoorOpen: (open) => protagonistRoomDoor.setOpen(open),
     setStoneCollected: (collected) => {
       const stone = storyPropObjects.get("stone");
@@ -1518,12 +1543,12 @@ function addLamp(scene: THREE.Scene, environment: EnvironmentSystem, brass: THRE
 }
 
 interface FigureAppearance {
+  faceStyle: "protagonist" | "zayan" | "tenant";
   coatColor: string;
   shirtColor: string;
   skinColor: string;
   hairColor: string;
   trousersColor: string;
-  hairStyle: "long" | "receding" | "short";
   scaleX: number;
   scaleY: number;
 }
@@ -1536,12 +1561,27 @@ function createDemoFigure(appearance: FigureAppearance): THREE.Group {
   group.scale.set(appearance.scaleX, appearance.scaleY, 1);
   const coat = new THREE.MeshStandardMaterial({ color: appearance.coatColor, roughness: 0.92 });
   const shirt = new THREE.MeshStandardMaterial({ color: appearance.shirtColor, roughness: 0.93 });
-  const skin = new THREE.MeshStandardMaterial({ color: appearance.skinColor, roughness: 0.79 });
-  const hair = new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: 0.98 });
+  const skin = new THREE.MeshStandardMaterial({
+    color: appearance.skinColor,
+    roughness: 0.86,
+  });
+  const skinShadow = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(appearance.skinColor).multiplyScalar(0.68),
+    roughness: 0.92,
+  });
+  const lip = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(appearance.skinColor).lerp(new THREE.Color("#8b5148"), 0.42),
+    roughness: 0.82,
+  });
+  const hair = new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: 0.94 });
   const trousers = new THREE.MeshStandardMaterial({ color: appearance.trousersColor, roughness: 0.97 });
-  const eyes = new THREE.MeshStandardMaterial({ color: "#dfd1bb", roughness: 0.7 });
-  const iris = new THREE.MeshStandardMaterial({ color: "#53605c", roughness: 0.56 });
+  const eyes = new THREE.MeshStandardMaterial({ color: "#e5ddd0", roughness: 0.38 });
+  const iris = new THREE.MeshStandardMaterial({
+    color: appearance.faceStyle === "tenant" ? "#667064" : "#55483d",
+    roughness: 0.42,
+  });
   const dark = new THREE.MeshStandardMaterial({ color: "#29231f", roughness: 0.93 });
+  const pupil = new THREE.MeshStandardMaterial({ color: "#171514", roughness: 0.28 });
 
   const torso = new THREE.LatheGeometry(
     [
@@ -1569,52 +1609,215 @@ function createDemoFigure(appearance: FigureAppearance): THREE.Group {
   addPart(group, new THREE.SphereGeometry(0.085, 12, 10), skin, -0.4, 0.78, 0.035);
   addPart(group, new THREE.SphereGeometry(0.085, 12, 10), skin, 0.4, 0.78, 0.035);
   addPart(group, new THREE.CylinderGeometry(0.09, 0.1, 0.2, 12), shirt, 0, 1.59, 0);
-  addPart(group, new THREE.SphereGeometry(0.195, 22, 18), skin, 0, 1.78, 0.015);
+  addPart(group, new THREE.CylinderGeometry(0.075, 0.095, 0.23, 16), skin, 0, 1.66, -0.005);
+  const face = FACE_SHAPES[appearance.faceStyle];
+  const headProfile = [
+    [0.095, 0.015],
+    [0.125, 0.045],
+    [face.jaw * 0.17, 0.105],
+    [face.cheek * 0.19, 0.19],
+    [face.temple * 0.18, 0.285],
+    [face.temple * 0.17, 0.365],
+    [0.132, 0.43],
+    [0.082, 0.475],
+    [0, 0.49],
+  ].map(([radius, height]) => new THREE.Vector2(radius * face.width, height * face.height));
+  const headGeometry = new THREE.LatheGeometry(headProfile, 32);
+  headGeometry.computeVertexNormals();
+  addPart(group, headGeometry, skin, 0, 1.61, 0);
+
+  const eyeY = 1.89;
+  const eyeSpacing = face.eyeSpacing;
+  const eyeSocket = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(appearance.skinColor).multiplyScalar(0.78),
+    roughness: 0.95,
+  });
+  const brows: Array<[number, number]> = [[-1, face.browTilt], [1, -face.browTilt]];
+  for (const side of [-1, 1]) {
+    const x = side * eyeSpacing;
+    const cheek = addPart(
+      group,
+      new THREE.SphereGeometry(1, 18, 14),
+      skin,
+      side * 0.105 * face.width,
+      1.765,
+      0.112,
+    );
+    cheek.scale.set(0.078 * face.cheek, 0.068, 0.038);
+
+    const socket = addPart(group, new THREE.SphereGeometry(1, 18, 14), eyeSocket, x, eyeY, 0.146);
+    socket.scale.set(0.048, 0.034, 0.021);
+    const eyeball = addPart(group, new THREE.SphereGeometry(1, 20, 16), eyes, x, eyeY, 0.16);
+    eyeball.scale.set(0.033, 0.023, 0.025);
+    const irisMesh = addPart(group, new THREE.SphereGeometry(1, 16, 12), iris, x, eyeY - 0.001, 0.181);
+    irisMesh.scale.set(0.0145, 0.017, 0.008);
+    const pupilMesh = addPart(group, new THREE.SphereGeometry(1, 14, 10), pupil, x, eyeY - 0.001, 0.187);
+    pupilMesh.scale.set(0.007, 0.010, 0.004);
+    const catchlight = new THREE.MeshBasicMaterial({ color: "#f2eadd" });
+    const highlight = addPart(group, new THREE.SphereGeometry(0.0035, 8, 6), catchlight, x - 0.004, eyeY + 0.006, 0.191);
+    highlight.castShadow = false;
+
+    const [browSide, tilt] = brows[side === -1 ? 0 : 1];
+    const browPoints = [
+      new THREE.Vector3(browSide * (eyeSpacing - 0.045), eyeY + 0.047 + tilt * 0.3, 0.153),
+      new THREE.Vector3(browSide * eyeSpacing, eyeY + 0.061 + tilt, 0.17),
+      new THREE.Vector3(browSide * (eyeSpacing + 0.045), eyeY + 0.045 - tilt * 0.25, 0.151),
+    ];
+    addFaceCurve(group, hair, browPoints, face.browWeight, 10);
+
+    const upperLidPoints = [
+      new THREE.Vector3(x - 0.034, eyeY + 0.002, 0.173),
+      new THREE.Vector3(x, eyeY + 0.022, 0.181),
+      new THREE.Vector3(x + 0.034, eyeY + 0.002, 0.173),
+    ];
+    addFaceCurve(group, skinShadow, upperLidPoints, 0.0045, 8);
+  }
+
+  const noseBridge = addPart(group, new THREE.SphereGeometry(1, 16, 14), skin, 0, 1.795, 0.166);
+  noseBridge.scale.set(0.026, 0.076, 0.046);
+  const noseTip = addPart(group, new THREE.SphereGeometry(1, 16, 12), skin, 0, 1.727, 0.195);
+  noseTip.scale.set(0.035, 0.026, 0.041);
+  for (const side of [-1, 1]) {
+    const nostril = addPart(group, new THREE.SphereGeometry(1, 10, 8), skinShadow, side * 0.022, 1.71, 0.205);
+    nostril.scale.set(0.009, 0.006, 0.005);
+
+    const ear = addPart(group, new THREE.SphereGeometry(1, 16, 12), skin, side * 0.174, 1.815, -0.012);
+    ear.scale.set(0.036, 0.061, 0.035);
+    const innerEar = addPart(group, new THREE.SphereGeometry(1, 12, 10), skinShadow, side * 0.184, 1.816, 0.008);
+    innerEar.scale.set(0.016, 0.036, 0.014);
+  }
+
+  const upperLipPoints = [
+    new THREE.Vector3(-0.043, 1.666, 0.117),
+    new THREE.Vector3(-0.021, 1.674, 0.126),
+    new THREE.Vector3(0, 1.669, 0.13),
+    new THREE.Vector3(0.021, 1.674, 0.126),
+    new THREE.Vector3(0.043, 1.666, 0.117),
+  ];
+  const lowerLipPoints = [
+    new THREE.Vector3(-0.038, 1.659, 0.119),
+    new THREE.Vector3(0, 1.65, 0.128),
+    new THREE.Vector3(0.038, 1.659, 0.119),
+  ];
+  addFaceCurve(group, lip, upperLipPoints, 0.006, 14);
+  addFaceCurve(group, lip, lowerLipPoints, 0.006, 12);
+  addFaceCurve(
+    group,
+    skinShadow,
+    [new THREE.Vector3(-0.034, 1.662, 0.123), new THREE.Vector3(0, 1.661, 0.13), new THREE.Vector3(0.034, 1.662, 0.123)],
+    0.0025,
+    10,
+  );
+  addPart(group, new THREE.SphereGeometry(0.18, 18, 12), skin, 0, 1.625, -0.02).scale.set(0.68, 0.16, 0.74);
+  addPart(group, new THREE.BoxGeometry(0.18, 0.055, 0.11), coat, 0, 1.48, 0.11);
 
   const hairCap = new THREE.Mesh(
-    new THREE.SphereGeometry(
-      appearance.hairStyle === "long" ? 0.21 : 0.205,
-      20,
-      14,
-      0,
-      Math.PI * 2,
-      0,
-      appearance.hairStyle === "long" ? 1.72 : appearance.hairStyle === "receding" ? 1.0 : 1.33,
-    ),
+    new THREE.SphereGeometry(0.205, 28, 18, 0, Math.PI * 2, 0, face.hairCapAngle),
     hair,
   );
-  hairCap.position.set(0, 1.81, -0.005);
+  hairCap.position.set(0, 1.905, -0.008);
+  hairCap.scale.set(face.hairWidth, 1, 0.98);
+  hairCap.castShadow = true;
   group.add(hairCap);
-  if (appearance.hairStyle === "long") {
-    for (const side of [-1, 1]) {
-      const lock = addPart(group, new THREE.CapsuleGeometry(0.052, 0.28, 4, 8), hair, side * 0.15, 1.62, -0.015);
-      lock.rotation.z = side * -0.08;
-    }
-    const scarf = new THREE.MeshStandardMaterial({ color: "#9b7750", roughness: 0.96 });
-    addPart(group, new THREE.BoxGeometry(0.3, 0.15, 0.24), scarf, 0, 1.49, 0.03);
-    addPart(group, new THREE.BoxGeometry(0.09, 0.34, 0.11), scarf, 0.12, 1.27, 0.1);
-  } else if (appearance.hairStyle === "receding") {
-    for (const side of [-1, 1]) {
-      addPart(group, new THREE.SphereGeometry(0.075, 12, 8), hair, side * 0.16, 1.73, -0.015);
-    }
-    const shoulders = addPart(group, new THREE.SphereGeometry(0.31, 14, 10), coat, 0, 1.38, 0);
-    shoulders.scale.set(1.36, 0.58, 0.86);
+  for (const lock of face.hairLocks) {
+    const tuft = addPart(group, new THREE.SphereGeometry(1, 14, 10), hair, lock.x, lock.y, lock.z);
+    tuft.scale.set(lock.sx, lock.sy, lock.sz);
+    tuft.rotation.z = lock.rotation;
   }
-  addPart(group, new THREE.SphereGeometry(0.047, 10, 8), skin, -0.195, 1.77, 0);
-  addPart(group, new THREE.SphereGeometry(0.047, 10, 8), skin, 0.195, 1.77, 0);
-  addPart(group, new THREE.SphereGeometry(0.033, 10, 8), skin, 0, 1.742, 0.19);
-  for (const x of [-0.072, 0.072]) {
-    addPart(group, new THREE.SphereGeometry(0.031, 12, 10), eyes, x, 1.79, 0.159);
-    addPart(group, new THREE.SphereGeometry(0.015, 10, 8), iris, x, 1.79, 0.184);
-    addPart(group, new THREE.SphereGeometry(0.008, 8, 8), dark, x, 1.79, 0.195);
-    const brow = addPart(group, new THREE.BoxGeometry(0.077, 0.017, 0.024), hair, x, 1.837, 0.158);
-    brow.rotation.z = x < 0 ? -0.08 : 0.08;
+  if (appearance.faceStyle === "tenant") {
+    for (const side of [-1, 1]) {
+      const sideHair = addPart(
+        group,
+        new THREE.SphereGeometry(0.09, 14, 10),
+        hair,
+        side * 0.148,
+        1.84,
+        -0.025,
+      );
+      sideHair.scale.set(0.45, 1.85, 0.8);
+    }
   }
-  addPart(group, new THREE.BoxGeometry(0.085, 0.018, 0.025), dark, 0, 1.68, 0.166);
-  addPart(group, new THREE.BoxGeometry(0.18, 0.055, 0.11), coat, 0, 1.48, 0.11);
+
   addPart(group, new THREE.SphereGeometry(0.024, 8, 8), new THREE.MeshStandardMaterial({ color: "#aa8a62", metalness: 0.56 }), 0, 1.25, 0.265);
   addPart(group, new THREE.SphereGeometry(0.024, 8, 8), new THREE.MeshStandardMaterial({ color: "#aa8a62", metalness: 0.56 }), 0, 1.03, 0.27);
   return group;
+}
+
+interface FaceShape {
+  width: number;
+  height: number;
+  jaw: number;
+  cheek: number;
+  temple: number;
+  eyeSpacing: number;
+  browTilt: number;
+  browWeight: number;
+  hairCapAngle: number;
+  hairWidth: number;
+  hairLocks: Array<{ x: number; y: number; z: number; sx: number; sy: number; sz: number; rotation: number }>;
+}
+
+const FACE_SHAPES: Record<FigureAppearance["faceStyle"], FaceShape> = {
+  protagonist: {
+    width: 1,
+    height: 1.04,
+    jaw: 0.78,
+    cheek: 0.94,
+    temple: 1,
+    eyeSpacing: 0.063,
+    browTilt: 0.002,
+    browWeight: 0.009,
+    hairCapAngle: 1.12,
+    hairWidth: 0.96,
+    hairLocks: [
+      { x: -0.055, y: 2.035, z: 0.105, sx: 0.093, sy: 0.04, sz: 0.075, rotation: 0.14 },
+      { x: 0.035, y: 2.045, z: 0.09, sx: 0.105, sy: 0.035, sz: 0.065, rotation: -0.1 },
+    ],
+  },
+  zayan: {
+    width: 1.04,
+    height: 1,
+    jaw: 0.91,
+    cheek: 1.08,
+    temple: 1.03,
+    eyeSpacing: 0.067,
+    browTilt: 0.008,
+    browWeight: 0.012,
+    hairCapAngle: 1.3,
+    hairWidth: 1,
+    hairLocks: [
+      { x: -0.105, y: 2.025, z: 0.052, sx: 0.071, sy: 0.055, sz: 0.09, rotation: -0.32 },
+      { x: -0.025, y: 2.055, z: 0.075, sx: 0.072, sy: 0.045, sz: 0.085, rotation: 0.1 },
+      { x: 0.065, y: 2.04, z: 0.044, sx: 0.09, sy: 0.052, sz: 0.09, rotation: 0.42 },
+    ],
+  },
+  tenant: {
+    width: 0.94,
+    height: 1.08,
+    jaw: 0.72,
+    cheek: 0.91,
+    temple: 0.93,
+    eyeSpacing: 0.06,
+    browTilt: -0.004,
+    browWeight: 0.01,
+    hairCapAngle: 0.83,
+    hairWidth: 0.96,
+    hairLocks: [],
+  },
+};
+
+function addFaceCurve(
+  parent: THREE.Object3D,
+  material: THREE.Material,
+  points: THREE.Vector3[],
+  radius: number,
+  segments: number,
+): THREE.Mesh {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, segments, radius, 6, false), material);
+  mesh.castShadow = true;
+  parent.add(mesh);
+  return mesh;
 }
 
 function addEntityFeatures(entity: THREE.Group): THREE.Group {

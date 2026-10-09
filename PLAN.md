@@ -55,11 +55,11 @@
 
 ## Phase 3 — Full Episode 1 implementation (partial; final verification outstanding)
 
-- [~] Expand the connected procedural house to two storeys, with stairs, a central upper-corridor entrance, protagonist's bedroom on the left, Aren's room on the right, a separate tenant room, and a larger finale room. The revised layout is implemented; validate the landing, room entrances, doors, route blockers, and complete traversal before marking complete.
+- [~] Expand the connected procedural house to two storeys, with stairs, a central upper-corridor entrance, protagonist's bedroom on the left, Zayan's room on the right, a separate tenant room, and a larger finale room. The revised layout is implemented; validate the landing, room entrances, doors, route blockers, and complete traversal before marking complete.
 - [x] Establish fire loss, financial pressure, job, unusually cheap rental, outside arrival, check-in, upstairs rest, and offscreen work transitions.
-- [~] Implement multiple suspicious encounters/clues involving Aren, the distinct first strange person. Aren retreats on first encounter; stain cleaning, warnings, repeated talks, shared repair, and the Day 3 scolding support suspicion-to-trust progression. Full pacing and missable-clue recovery remain unverified.
+- [~] Implement multiple suspicious encounters/clues involving Zayan, the distinct first strange person. Zayan retreats on first encounter; the required Day 2 laundry scene, stain inspection, repeated talks, shared pipe repair, and Day 3 scolding support suspicion-to-trust progression. The sleep gate now prevents bypassing the laundry chain; full pacing and missable-clue recovery remain unverified.
 - [~] Implement a separate post-trust tenant investigation with behavior, clues, contradictions, and confrontation. The complete evidence chain remains to be fresh-play tested.
-- [~] Implement the Day 3 plan, Sunday/Day 4 room check and disappearance, stone-gated forbidden door, transformation, canonical line, and three state-based ending cards. Full finale and each variant remain unverified.
+- [~] Implement the Day 3 plan, red Sunday/Day 4 title card, room check and disappearance, stone-gated forbidden door, transformation, canonical line, and three state-based ending cards. Full finale and each variant remain unverified.
 - [~] Include door-detail meshes in their interaction targets so decorative insets do not occlude prompts. Controlled checks confirmed front-door focus, opening, and passage; test every route in a foreground playthrough.
 - [ ] Reach and measure 30–45 minutes of meaningful first-playthrough content without traversal padding; up to an hour is acceptable for slower exploration.
 

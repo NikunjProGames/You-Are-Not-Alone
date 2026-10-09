@@ -45,6 +45,7 @@ export class Game {
   private readonly toast = required<HTMLElement>("#toast");
   private readonly screenReaderStatus = required<HTMLElement>("#screen-reader-status");
   private readonly travelTransition = required<HTMLElement>("#travel-transition");
+  private readonly travelTransitionTitle = required<HTMLElement>("#travel-transition-title");
   private readonly travelTransitionCopy = required<HTMLElement>("#travel-transition-copy");
   private readonly creatorDialog = required<HTMLDialogElement>("#creator-dialog");
   private readonly creatorOpenButton = required<HTMLButtonElement>("#creator-open");
@@ -133,7 +134,7 @@ export class Game {
       setObjective: (objective, destination) => this.setObjective(objective, destination),
       showToast: (message) => this.showToast(message),
       saveCheckpoint: () => this.saveCheckpoint(false),
-      transition: (message) => this.showTravelTransition(message),
+      transition: (message, title) => this.showTravelTransition(message, title),
       showEnding: (ending) => this.showEnding(ending),
     });
     this.setupUi();
@@ -148,13 +149,17 @@ export class Game {
     this.story.subscribe((snapshot) => this.renderStory(snapshot));
   }
 
-  private showTravelTransition(message: string): void {
+  private showTravelTransition(message: string, title?: string): void {
     window.clearTimeout(this.travelTransitionTimeout);
+    this.travelTransitionTitle.textContent = title ?? "";
+    this.travelTransitionTitle.hidden = !title;
     this.travelTransitionCopy.textContent = message;
     this.travelTransition.hidden = false;
     this.travelTransition.classList.remove("travel-transition");
+    this.travelTransition.classList.remove("day-title-card");
     void this.travelTransition.offsetWidth;
     this.travelTransition.classList.add("travel-transition");
+    if (title) this.travelTransition.classList.add("day-title-card");
     this.travelTransitionTimeout = window.setTimeout(() => {
       this.travelTransition.hidden = true;
     }, 4200);
@@ -254,6 +259,7 @@ export class Game {
     this.world.setTenantStudyOpen(false);
     this.world.setArenRoomAvailable(false);
     this.world.setArenRoomDoorOpen(false);
+    this.world.setHousemateCleaning(false);
     this.world.setProtagonistRoomDoorOpen(false);
     this.world.setStoneCollected(false);
     this.world.setUpperEntryDoorOpen(true);
@@ -312,6 +318,7 @@ export class Game {
 
   private setupUi(): void {
     this.dialogues.setActiveChangeHandler((active) => {
+      this.hud.classList.toggle("is-dialogue-active", active);
       if (active) {
         this.player.setLookEnabled(false);
         this.player.releasePointerLock();

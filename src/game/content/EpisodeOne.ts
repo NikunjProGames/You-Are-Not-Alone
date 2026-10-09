@@ -23,7 +23,7 @@ interface EpisodeOneOptions {
   showToast: (message: string) => void;
   playTone: (frequency: number, duration: number, volume: number) => void;
   saveCheckpoint: () => void;
-  transition: (message: string) => void;
+  transition: (message: string, title?: string) => void;
   showEnding: (ending: EpisodeEnding) => void;
 }
 
@@ -37,6 +37,7 @@ const OBJECTIVE_DESTINATIONS = {
   laundry: new THREE.Vector3(-4.9, 0, -6.2),
   pipe: new THREE.Vector3(-5.9, 0, -7.55),
   storageKey: new THREE.Vector3(-9.45, 0, -9.45),
+  tenantLedger: new THREE.Vector3(5.1, 0, -10.6),
   tenantStudy: new THREE.Vector3(9.55, 0, -10.45),
   arenDoor: new THREE.Vector3(2.15, 4.4, -2.55),
   rescueStone: new THREE.Vector3(1.15, 0, 12.5),
@@ -262,7 +263,7 @@ export class EpisodeOne {
       },
       "sealed-note": {
         title: "A sealed note",
-        text: "The envelope is addressed to the tenant. Inside: “If the new renter asks about the voice, tell them the house settles after the fire. Do not let Aren take them downstairs.” It is signed with no name.",
+        text: "The envelope is addressed to the tenant. Inside: “If the new renter asks about the voice, tell them the house settles after the fire. Do not let Zayan take them downstairs.” It is signed with no name.",
       },
       "tenant-audio": {
         title: "A voice recorder",
@@ -277,7 +278,7 @@ export class EpisodeOne {
         text: "A small brass button from your friend's coat. Its back is bent where it was torn free. The floor around it bears a fine ash that looks like the residue left after the earlier disturbances.",
       },
       "housemate-letter": {
-        title: "Aren's folded letter",
+        title: "Zayan's folded letter",
         text: "A letter to the owner asks for the leak to be repaired and says he will stop cleaning it himself. The last line is unfinished: “I keep hearing the new renter in the back room before they—”",
       },
       "wet-footprints": {
@@ -358,7 +359,7 @@ export class EpisodeOne {
           id: "episode-tenant-scolding",
           lines: [
             { speaker: "Tenant", text: "I told you not to speak to the new renter. You have no right to bring them into this." },
-            { speaker: "Aren", text: "I was trying to warn them." },
+            { speaker: "Zayan", text: "I was trying to warn them." },
             { speaker: "Tenant", text: "You are a guest here. Remember who gives you a room." },
             { speaker: "You", text: "That's enough." },
             { speaker: "Tenant", text: "You have no idea what he has done in this house." },
@@ -366,7 +367,7 @@ export class EpisodeOne {
           onComplete: () => {
             characters.place("tenant", new THREE.Vector3(-1.5, 0, 3.1), 0);
             characters.place("housemate", new THREE.Vector3(2.75, 0, -2.1), Math.PI);
-            this.options.setObjective("Find Aren in the dining area. Ask why the tenant treats him this way.", OBJECTIVE_DESTINATIONS.arenDining);
+            this.options.setObjective("Find Zayan in the dining area. Ask why the tenant treats him this way.", OBJECTIVE_DESTINATIONS.arenDining);
             this.options.saveCheckpoint();
           },
         });
@@ -377,25 +378,41 @@ export class EpisodeOne {
       position: new THREE.Vector3(-4.8, 1.64, -7.3),
       radius: 2.1,
       condition: {
-        allFlags: ["episode.housemateMet", "episode.hallEntered"],
+        allFlags: [
+          "episode.housemateMet",
+          "episode.hallEntered",
+          "episode.tenantAskedAboutAren",
+          "episode.returnedFromWorkDay2",
+        ],
         noFlags: ["episode.sawArenSweep", "episode.housemateTrust"],
+        minDay: 2,
+        maxDay: 2,
+        phases: ["evening"],
       },
       run: () => {
         characters.place("housemate", new THREE.Vector3(-5.05, 0, -6.95), Math.PI / 2);
+        characters.place("tenant", new THREE.Vector3(-3.55, 0, -6.95), -Math.PI / 2);
+        world.setHousemateCleaning(true);
         story.setFlag("episode.sawArenSweep", true);
         this.options.playTone(74, 0.75, 0.045);
-        this.options.setObjective("Aren is scrubbing something from the laundry floor. Find out what it is.", OBJECTIVE_DESTINATIONS.laundry);
+        this.options.setObjective("The laundry scene left a dark mark beneath the sink. Inspect it.", OBJECTIVE_DESTINATIONS.laundry);
         this.say({
           id: "episode-aren-sweeping",
           lines: [
             { speaker: "You", text: "What are you cleaning?" },
-            { speaker: "Aren", text: "A leak. It leaves a stain if I don't get to it first." },
-            { speaker: "You", text: "That doesn't look like water." },
-            { speaker: "Aren", text: "Then don't touch it." },
+            { speaker: "Zayan", text: "Something the tenant keeps painting over." },
+            { speaker: "You", text: "It looks like blood." },
+            { speaker: "Zayan", text: "Then don't touch it." },
+            { speaker: "Tenant", text: "I told you not to frighten the new resident." },
+            { speaker: "Zayan", text: "I was trying to explain what is under the paint." },
+            { speaker: "Tenant", text: "Back to your room. Now." },
           ],
           onComplete: () => {
+            world.setHousemateCleaning(false);
             characters.place("housemate", new THREE.Vector3(0.88, 0, -7.25), 0);
-            this.options.showToast("The damp cloth leaves a dark mark on Aren's sleeve.");
+            characters.place("tenant", new THREE.Vector3(-1.5, 0, 3.1), 0);
+            this.options.showToast("The damp cloth leaves a dark mark on Zayan's sleeve.");
+            this.options.setObjective("Inspect the dark mark beneath the laundry sink.", OBJECTIVE_DESTINATIONS.laundry);
             this.options.saveCheckpoint();
           },
         });
@@ -418,9 +435,15 @@ export class EpisodeOne {
       position: new THREE.Vector3(-4.7, 1.64, -7.7),
       radius: 2.0,
       condition: {
-        allFlags: ["episode.bloodSeen", "episode.secondHousemateTalk", "episode.prologueComplete"],
-        noFlags: ["episode.sharedTask"],
+        allFlags: [
+          "episode.bloodSeen",
+          "episode.secondHousemateTalk",
+          "episode.prologueComplete",
+          "episode.sawArenSweep",
+        ],
+        noFlags: ["episode.sharedTask", "episode.sharedTaskStarted"],
         minDay: 2,
+        maxDay: 3,
       },
       run: () => {
         characters.place("housemate", new THREE.Vector3(-5.1, 0, -7.7), Math.PI / 2);
@@ -430,24 +453,24 @@ export class EpisodeOne {
         this.say({
           id: "episode-shared-search",
           lines: [
-            { speaker: "Aren", text: "I didn't put it there. I know what it looks like, and I know how that sounds." },
+            { speaker: "Zayan", text: "I didn't put it there. I know what it looks like, and I know how that sounds." },
             { speaker: "You", text: "Then show me what you were trying to clean." },
-            { speaker: "Aren", text: "The pipe has been leaking for months. I keep reporting it. The owner keeps painting over the stain." },
+            { speaker: "Zayan", text: "The pipe has been leaking for months. I keep reporting it. The owner keeps painting over the stain." },
             {
-              speaker: "Aren",
+              speaker: "Zayan",
               text: "I was trying to stop the water reaching the fuse box. I should have told you before you found me here.",
               choices: [
                 {
                   id: "help-with-pipe",
                   label: "“Show me where it leaks.”",
                   setFlag: { key: "episode.helpedAren", value: true },
-                  response: { speaker: "Aren", text: "Thank you. The valve is seized, but if we work it together we might stop the leak." },
+                  response: { speaker: "Zayan", text: "Thank you. The valve is seized, but if we work it together we might stop the leak." },
                 },
                 {
                   id: "keep-distance",
                   label: "“I need to think about this.”",
                   setFlag: { key: "episode.keptDistance", value: true },
-                  response: { speaker: "Aren", text: "I understand. Just don't let the tenant convince you that asking questions is dangerous." },
+                  response: { speaker: "Zayan", text: "I understand. Just don't let the tenant convince you that asking questions is dangerous." },
                 },
               ],
             },
@@ -465,9 +488,10 @@ export class EpisodeOne {
       position: new THREE.Vector3(4.7, 1.64, -8.8),
       radius: 2.0,
       condition: {
-        allFlags: ["episode.housemateTrust"],
+        allFlags: ["episode.housemateTrust", "episode.returnedFromWorkDay3"],
         noFlags: ["episode.tenantWatching"],
         minDay: 3,
+        phases: ["evening"],
       },
       run: () => {
         story.setFlag("episode.tenantWatching", true);
@@ -482,7 +506,7 @@ export class EpisodeOne {
           ],
           onComplete: () => {
             characters.place("tenant", new THREE.Vector3(4.65, 0, -8.8), -Math.PI / 2);
-            this.options.setObjective("The tenant knew where you were headed. Search their records with Aren.", OBJECTIVE_DESTINATIONS.tenantStudy);
+            this.options.setObjective("The tenant knew where you were headed. Search their records with Zayan.", OBJECTIVE_DESTINATIONS.tenantStudy);
           },
         });
       },
@@ -510,24 +534,24 @@ export class EpisodeOne {
       this.say({
         id: "episode-housemate-first-meeting",
         lines: [
-          { speaker: "Aren", text: "You took the room." },
+          { speaker: "Zayan", text: "You took the room." },
           { speaker: "You", text: "You were expecting me?" },
-          { speaker: "Aren", text: "The owner said someone was coming. I heard the front door before you did." },
+          { speaker: "Zayan", text: "The owner said someone was coming. I heard the front door before you did." },
           {
-            speaker: "Aren",
+            speaker: "Zayan",
             text: "Don't use the back room after midnight. If you hear your name from there, it isn't me.",
             choices: [
               {
                 id: "ask-why",
                 label: "“Why would you tell me that?”",
                 setFlag: { key: "episode.askedArenWhy", value: true },
-                response: { speaker: "Aren", text: "Because I heard it say your name last night. I don't know what it is, but I know it wasn't you." },
+                response: { speaker: "Zayan", text: "Because I heard it say your name last night. I don't know what it is, but I know it wasn't you." },
               },
               {
                 id: "say-thanks",
                 label: "“I'll remember that.”",
                 setFlag: { key: "episode.acceptedWarning", value: true },
-                response: { speaker: "Aren", text: "Good. If you hear it, leave the room and find me. Don't answer." },
+                response: { speaker: "Zayan", text: "Good. If you hear it, leave the room and find me. Don't answer." },
               },
             ],
           },
@@ -535,7 +559,14 @@ export class EpisodeOne {
         onComplete: () => {
           story.setFlag("episode.housemateTalks", talks + 1);
           story.setFlag("episode.housemateMet", true);
-          this.options.setObjective("Ask the tenant who the person was, then return upstairs.", OBJECTIVE_DESTINATIONS.reception);
+          this.options.setObjective(
+            story.hasFlag("episode.tenantAskedAboutAren")
+              ? "Find Zayan in the laundry room and see what he was cleaning."
+              : "Ask the tenant who the person was, then return upstairs.",
+            story.hasFlag("episode.tenantAskedAboutAren")
+              ? OBJECTIVE_DESTINATIONS.laundry
+              : OBJECTIVE_DESTINATIONS.reception,
+          );
         },
       });
       return;
@@ -545,33 +576,37 @@ export class EpisodeOne {
       id: "episode-day-three-dinner",
       lines: [
         { speaker: "You", text: "The tenant spoke to you like you were property." },
-        { speaker: "Aren", text: "They did that to the last renter, too. When she complained, the tenant said she had never lived here." },
+        { speaker: "Zayan", text: "They made me clean that stain whenever it came back. I thought it was blood too. The pipe explains the color, not why they kept painting the wall." },
+        { speaker: "Zayan", text: "They did that to the last renter, too. When she complained, the tenant said she had never lived here." },
         { speaker: "You", text: "You know what happened to her?" },
         {
-          speaker: "Aren",
+          speaker: "Zayan",
           text: "Only what I saw: her room was cleared before dawn. The tenant kept her key and told everyone she had moved away.",
           choices: [
             {
               id: "believe-aren",
               label: "“I believe what I saw tonight.”",
               setFlag: { key: "episode.believedAren", value: true },
-              response: { speaker: "Aren", text: "Then help me find out what happened to her. Don't take my word for it—look at the records." },
+              response: { speaker: "Zayan", text: "Then help me find out what happened to her. Don't take my word for it—look at the records." },
             },
             {
               id: "stay-cautious",
               label: "“I need proof before I accuse anyone.”",
               setFlag: { key: "episode.stayedCautious", value: true },
-              response: { speaker: "Aren", text: "That's fair. The tenant keeps the repair records. We can check those before deciding." },
+              response: { speaker: "Zayan", text: "That's fair. The tenant keeps the repair records. We can check those before deciding." },
             },
           ],
         },
-        { speaker: "Aren", text: "There's a leak downstairs I've been trying to fix. The tenant keeps the repair records. Help me check both, and decide for yourself." },
+        { speaker: "Zayan", text: "We proved the stain came from the pipe. The tenant's records are the next thing we can verify. Help me check them, then decide for yourself." },
       ],
       onComplete: () => {
         story.setFlag("episode.housemateDinnerTalk", true);
         story.setFlag("episode.tenantAbuseObserved", true);
         story.setFlag("episode.housemateTalks", talks + 1);
-        this.options.setObjective("Investigate the laundry stain and pipe with Aren. Decide whether his story holds up.", OBJECTIVE_DESTINATIONS.laundry);
+        this.options.setObjective(
+          "Check the tenant's repair records with Zayan, then decide what the evidence means.",
+          OBJECTIVE_DESTINATIONS.tenantLedger,
+        );
       },
       });
       return;
@@ -580,24 +615,24 @@ export class EpisodeOne {
       this.say({
         id: "episode-housemate-stain-confrontation",
         lines: [
-          { speaker: "Aren", text: "You found the stain." },
+          { speaker: "Zayan", text: "You found the stain." },
           { speaker: "You", text: "You were cleaning it." },
-          { speaker: "Aren", text: "I was trying to get the smell out before the tenant came back. That's all I can say without sounding worse." },
+          { speaker: "Zayan", text: "I was trying to get the smell out before the tenant came back. That's all I can say without sounding worse." },
           {
-            speaker: "Aren",
+            speaker: "Zayan",
             text: "The tenant keeps a key to every room. I don't. If you saw me in there, I was trying to find the leak.",
             choices: [
               {
                 id: "accuse-aren",
                 label: "“You're leaving something out.”",
                 setFlag: { key: "episode.accusedAren", value: true },
-                response: { speaker: "Aren", text: "I am. Because the truth sounds impossible, and I don't know if you'd believe me." },
+                response: { speaker: "Zayan", text: "I am. Because the truth sounds impossible, and I don't know if you'd believe me." },
               },
               {
                 id: "ask-about-tenant",
                 label: "“Why are you worried about the tenant?”",
                 setFlag: { key: "episode.askedArenAboutTenant", value: true },
-                response: { speaker: "Aren", text: "The tenant keeps keys to rooms they say are empty. I heard someone behind that forbidden door—and the tenant knows it." },
+                response: { speaker: "Zayan", text: "The tenant keeps keys to rooms they say are empty. I heard someone behind that forbidden door—and the tenant knows it." },
               },
             ],
           },
@@ -606,7 +641,7 @@ export class EpisodeOne {
           story.setFlag("episode.secondHousemateTalk", true);
           story.setFlag("episode.housemateTalks", talks + 1);
           this.advanceTo(2, "morning");
-          this.options.setObjective("Check the laundry room stain, then ask Aren what he was doing there.", OBJECTIVE_DESTINATIONS.laundry);
+          this.options.setObjective("Return to the laundry with Zayan and trace the leak beneath the sink.", OBJECTIVE_DESTINATIONS.laundry);
           this.options.saveCheckpoint();
         },
       });
@@ -616,9 +651,9 @@ export class EpisodeOne {
       this.say({
         id: "episode-plan-conversation",
         lines: [
-          { speaker: "Aren", text: "The ledger and that recording agree on one thing: the tenant is preparing the rooms for something." },
+          { speaker: "Zayan", text: "The ledger and that recording agree on one thing: the tenant is preparing the rooms for something." },
           { speaker: "You", text: "We get the tenant away from the house, then we find you a safe way out." },
-          { speaker: "Aren", text: "If I knock twice, open the door. If you hear your own voice, don't answer it." },
+          { speaker: "Zayan", text: "If I knock twice, open the door. If you hear your own voice, don't answer it." },
           { speaker: "You", text: "Two knocks. I promise." },
         ],
       });
@@ -628,24 +663,24 @@ export class EpisodeOne {
       this.say({
         id: "episode-make-plan",
         lines: [
-          { speaker: "Aren", text: "The rent ledger is wrong. The recorder is worse. The tenant knew the rooms would answer before anyone else did." },
+          { speaker: "Zayan", text: "The rent ledger is wrong. The recorder is worse. The tenant knew the rooms would answer before anyone else did." },
           { speaker: "You", text: "We get them to the back room and make them explain it." },
-          { speaker: "Aren", text: "No. We get to the outside door. If the tenant follows, we don't split up." },
+          { speaker: "Zayan", text: "No. We get to the outside door. If the tenant follows, we don't split up." },
           {
-            speaker: "Aren",
+            speaker: "Zayan",
             text: "If I get separated, go through the bedroom and keep moving. Don't wait for me.",
             choices: [
               {
                 id: "promise-to-find-him",
                 label: "“I won't leave you here.”",
                 setFlag: { key: "episode.promisedAren", value: true },
-                response: { speaker: "Aren", text: "Then remember the plan. If the house tries to separate us, keep moving until you can reach me." },
+                response: { speaker: "Zayan", text: "Then remember the plan. If the house tries to separate us, keep moving until you can reach me." },
               },
               {
                 id: "agree-to-the-plan",
                 label: "“We leave together.”",
                 setFlag: { key: "episode.agreedPlan", value: true },
-                response: { speaker: "Aren", text: "Together, then. We leave before the tenant realizes what we know." },
+                response: { speaker: "Zayan", text: "Together, then. We leave before the tenant realizes what we know." },
               },
             ],
           },
@@ -653,7 +688,7 @@ export class EpisodeOne {
         onComplete: () => {
           story.setFlag("episode.planMade", true);
           this.advanceTo(3, "night");
-          this.options.setObjective("You and Aren will confront the tenant tonight. Return upstairs and sleep before Sunday.", OBJECTIVE_DESTINATIONS.upstairsBed);
+          this.options.setObjective("You and Zayan will confront the tenant tonight. Return upstairs and sleep before Sunday.", OBJECTIVE_DESTINATIONS.upstairsBed);
           this.options.saveCheckpoint();
         },
       });
@@ -663,16 +698,16 @@ export class EpisodeOne {
       this.say({
         id: "episode-housemate-trust",
         lines: [
-          { speaker: "Aren", text: "You came back to help. Most people decide what I am before they ask." },
+          { speaker: "Zayan", text: "You came back to help. Most people decide what I am before they ask." },
           { speaker: "You", text: "I still don't know what happened here." },
-          { speaker: "Aren", text: "Neither do I. But we can stop guessing alone." },
+          { speaker: "Zayan", text: "Neither do I. But we can stop guessing alone." },
         ],
       });
       return;
     }
     this.say({
       id: "episode-housemate-repeat",
-      lines: [{ speaker: "Aren", text: "The pipes knock when the rain changes. That's what I tell myself, anyway." }],
+      lines: [{ speaker: "Zayan", text: "The pipes knock when the rain changes. That's what I tell myself, anyway." }],
     });
   }
 
@@ -689,13 +724,13 @@ export class EpisodeOne {
           { speaker: "You", text: "I heard someone inside when I came up the walk." },
           {
             speaker: "Tenant",
-            text: "Aren. He has his own room. Do not follow him into the locked room at the back of the house. Do not open that door.",
+            text: "Zayan has his own room. Never open the door at the end of the upstairs hall, even if someone asks you to.",
             choices: [
               {
                 id: "ask-about-locked-room",
                 label: "“Why would you say that?”",
                 setFlag: { key: "episode.askedForbiddenRoom", value: true },
-                response: { speaker: "Tenant", text: "You have no right to ask. You rent a room, not the house. Keep away from that door." },
+                response: { speaker: "Tenant", text: "You have no right to ask. You rent a room, not the house. Stay away from the upstairs door." },
               },
               {
                 id: "accept-house-rules",
@@ -721,14 +756,14 @@ export class EpisodeOne {
         id: "episode-ask-tenant-about-aren",
         lines: [
           { speaker: "You", text: "The person near the entrance saw me and hurried away. Who is he?" },
-          { speaker: "Tenant", text: "Aren. He has been here longer than most. Keep to your room and you will have no trouble." },
+          { speaker: "Tenant", text: "Zayan. He has been here longer than most. Keep to your room and you will have no trouble." },
           { speaker: "You", text: "He looked frightened." },
-          { speaker: "Tenant", text: "Aren enjoys making people feel watched. Go upstairs; dinner will be set out later." },
+          { speaker: "Tenant", text: "Zayan enjoys making people feel watched. Go upstairs; dinner will be set out later." },
         ],
         onComplete: () => {
           story.setFlag("episode.tenantAskedAboutAren", true);
           story.setFlag("episode.tenantTalks", count + 1);
-          this.options.setObjective("Return upstairs. You can come back down for supper.", OBJECTIVE_DESTINATIONS.upstairsBed);
+          this.options.setObjective("Find Zayan in the laundry room and see what he was cleaning.", OBJECTIVE_DESTINATIONS.laundry);
           this.options.saveCheckpoint();
         },
       });
@@ -738,7 +773,7 @@ export class EpisodeOne {
       this.say({
         id: "episode-tenant-after-abduction",
         lines: [
-          { speaker: "You", text: "Where is Aren?" },
+          { speaker: "You", text: "Where is Zayan?" },
           { speaker: "Tenant", text: "You were warned not to open the door at the end of the hall." },
           { speaker: "You", text: "That isn't an answer." },
           { speaker: "Tenant", text: "It is the only one you are getting." },
@@ -750,10 +785,10 @@ export class EpisodeOne {
       this.say({
         id: "episode-tenant-after-scolding",
         lines: [
-          { speaker: "You", text: "You spoke to Aren as if he belonged to you." },
+          { speaker: "You", text: "You spoke to Zayan as if he belonged to you." },
           { speaker: "Tenant", text: "You saw one argument and decided you understood this house." },
           { speaker: "You", text: "I saw enough to ask questions." },
-          { speaker: "Tenant", text: "Then ask Aren. He has always been good at making a story sound convincing." },
+          { speaker: "Tenant", text: "Then ask Zayan. He has always been good at making a story sound convincing." },
         ],
       });
       return;
@@ -764,7 +799,7 @@ export class EpisodeOne {
         lines: [
           { speaker: "Tenant", text: "You must be the new renter. The low price was not a mistake; I prefer the rooms occupied." },
           { speaker: "You", text: "And the other person?" },
-          { speaker: "Tenant", text: "Aren has been here longer than I have. Don't mistake familiarity for honesty." },
+          { speaker: "Tenant", text: "Zayan has been here longer than I have. Don't mistake familiarity for honesty." },
           {
             speaker: "Tenant",
             text: "Keep to the rooms you rent, and we'll get along.",
@@ -795,10 +830,10 @@ export class EpisodeOne {
           {
             speaker: "Tenant",
             text: story.hasFlag("episode.planMade")
-              ? "You and Aren have made your plan. You should both leave this house alone."
+              ? "You and Zayan have made your plan. You should both leave this house alone."
               : story.hasFlag("episode.tenantSuspected")
                 ? "You have made up your mind. The rooms were safer when you stayed out of them."
-                : "I've answered you. Decide what you believe, but don't drag Aren into it.",
+                : "I've answered you. Decide what you believe, but don't drag Zayan into it.",
           },
           {
             speaker: "You",
@@ -806,7 +841,7 @@ export class EpisodeOne {
               ? "We will make our own decisions."
               : story.hasFlag("episode.tenantSuspected")
                 ? "You are not the only one who knows what is in those rooms."
-                : "I need to talk to Aren before I decide what to do.",
+                : "I need to talk to Zayan before I decide what to do.",
           },
         ],
       });
@@ -818,12 +853,12 @@ export class EpisodeOne {
       const lines: Conversation["lines"] = [];
       if (hasLedger) {
         lines.push(
-          { speaker: "You", text: "Your ledger lists repairs before the dates you gave Aren." },
+          { speaker: "You", text: "Your ledger lists repairs before the dates you gave Zayan." },
           { speaker: "Tenant", text: "An old entry is not proof of anything. Houses need repairs." },
         );
       } else {
         lines.push(
-          { speaker: "You", text: "Aren asked me to compare the repair records with what you told us." },
+          { speaker: "You", text: "Zayan asked me to compare the repair records with what you told us." },
           { speaker: "Tenant", text: "Then read the records before you decide what they mean." },
         );
       }
@@ -845,10 +880,29 @@ export class EpisodeOne {
       });
       return;
     }
+    if (!story.hasFlag("episode.scoldingSeen") || !story.hasFlag("episode.housemateDinnerTalk")) {
+      this.say({
+        id: "episode-tenant-not-yet-confronted",
+        lines: [
+          { speaker: "You", text: "There are things in this house I can't explain." },
+          { speaker: "Tenant", text: "Then don't turn uncertainty into an accusation." },
+          { speaker: "You", text: "I need to understand what happened to Zayan first." },
+          { speaker: "Tenant", text: "For once, that may be the right question." },
+        ],
+        onComplete: () => {
+          story.setFlag("episode.tenantTalks", count + 1);
+          this.options.setObjective(
+            "Speak with Zayan about what you witnessed before confronting the tenant.",
+            OBJECTIVE_DESTINATIONS.arenDining,
+          );
+        },
+      });
+      return;
+    }
     this.say({
       id: "episode-tenant-question",
       lines: [
-        { speaker: "Tenant", text: "You and Aren have been looking through my things." },
+        { speaker: "Tenant", text: "You and Zayan have been looking through my things." },
         { speaker: "You", text: "The repair dates in your ledger don't match what you told me." },
         { speaker: "Tenant", text: "I keep records. I don't owe you an explanation for every date." },
         { speaker: "You", text: "And the recording?" },
@@ -872,11 +926,11 @@ export class EpisodeOne {
       this.options.world.setMood("uneasy");
       this.options.playTone(61, 0.9, 0.055);
       if (story.value.day < 2) this.advanceTo(2, "morning");
-      this.options.setObjective("Ask Aren why he was cleaning the laundry-room stain.", OBJECTIVE_DESTINATIONS.laundry);
+      this.options.setObjective("Ask Zayan why he was cleaning the laundry-room stain.", OBJECTIVE_DESTINATIONS.laundry);
     }
     if (id === "loose-valve") {
       if (!story.hasFlag("episode.sharedTaskStarted")) {
-        this.options.showToast("The shutoff is seized. Aren may know why the stain keeps returning.");
+        this.options.showToast("The shutoff is seized. Zayan may know why the stain keeps returning.");
         return;
       }
       story.setFlag("episode.pipeRepaired", true);
@@ -886,8 +940,7 @@ export class EpisodeOne {
       story.setFlag("episode.westStoreUnlocked", true);
       this.options.world.setMood("settled");
       this.options.playTone(183, 0.24, 0.04);
-      this.advanceTo(3, "afternoon");
-      this.options.setObjective("Aren trusts you now. Find the key he left in the storage room and compare what he says with the tenant's records.", OBJECTIVE_DESTINATIONS.storageKey);
+      this.options.setObjective("Zayan trusts you now. Find the key he left in the storage room and compare what he says with the tenant's records.", OBJECTIVE_DESTINATIONS.storageKey);
       this.options.showToast("The pipe stops knocking. The red stain was rust-water, not blood.");
       this.options.saveCheckpoint();
       this.evaluateTenantProgress();
@@ -896,7 +949,7 @@ export class EpisodeOne {
     if (id === "strange-person-key") {
       story.setFlag("episode.arenKeyFound", true);
       story.setFlag("episode.suspicionStarted", true);
-      this.options.setObjective("Compare what you found with what Aren and the tenant have told you.");
+      this.options.setObjective("Compare what you found with what Zayan and the tenant have told you.");
     }
     if (id === "tenant-ledger") {
       story.setFlag("episode.tenantLedger", true);
@@ -909,7 +962,7 @@ export class EpisodeOne {
     }
     if (id === "sealed-note") {
       story.setFlag("episode.tenantSealedNote", true);
-      this.options.setObjective("The note warns the tenant not to let Aren take you downstairs. Ask Aren what is below the house.", OBJECTIVE_DESTINATIONS.arenDining);
+      this.options.setObjective("The note warns the tenant not to let Zayan take you downstairs. Ask Zayan what is below the house.", OBJECTIVE_DESTINATIONS.arenDining);
     }
     if (id === "tenant-audio") {
       story.setFlag("episode.tenantRecording", true);
@@ -929,7 +982,7 @@ export class EpisodeOne {
     }
     if (id === "housemate-letter") {
       story.setFlag("episode.housemateLetter", true);
-      this.options.showToast("Aren has been asking the owner to fix the leak for months.");
+      this.options.showToast("Zayan has been asking the owner to fix the leak for months.");
     }
     if (id === "wet-footprints") {
       story.setFlag("episode.wetFootprints", true);
@@ -952,7 +1005,7 @@ export class EpisodeOne {
       story.hasFlag("episode.housemateMet") &&
       !story.hasFlag("episode.bloodSeen")
     ) {
-      this.options.setObjective("The hallway warning does not explain the stain. Find out what Aren was cleaning.", OBJECTIVE_DESTINATIONS.laundry);
+      this.options.setObjective("The hallway warning does not explain the stain. Find out what Zayan was cleaning.", OBJECTIVE_DESTINATIONS.laundry);
     }
   }
 
@@ -973,11 +1026,13 @@ export class EpisodeOne {
       story.hasFlag("episode.tenantLedger") &&
       story.hasFlag("episode.tenantRecording") &&
       story.hasFlag("episode.tenantConfronted") &&
+      story.hasFlag("episode.scoldingSeen") &&
+      story.hasFlag("episode.housemateDinnerTalk") &&
       !story.hasFlag("episode.tenantSuspected")
     ) {
       story.setFlag("episode.tenantSuspected", true);
       this.advanceTo(3, "night");
-      this.options.setObjective("The tenant's account doesn't fit the evidence. Bring it to Aren and decide what to do.", OBJECTIVE_DESTINATIONS.arenDining);
+      this.options.setObjective("The tenant's account doesn't fit the evidence. Bring it to Zayan and decide what to do.", OBJECTIVE_DESTINATIONS.arenDining);
     }
   }
 
@@ -1003,12 +1058,35 @@ export class EpisodeOne {
       story.hasFlag("episode.tenantAskedAboutAren") &&
       !story.hasFlag("episode.returnedFromWorkDay3")
     ) {
+      if (
+        !story.hasFlag("episode.sawArenSweep") ||
+        !story.hasFlag("episode.bloodSeen") ||
+        !story.hasFlag("episode.secondHousemateTalk") ||
+        !story.hasFlag("episode.sharedTask")
+      ) {
+        this.options.showToast("Finish the laundry investigation with Zayan before turning in.");
+        this.options.setObjective(
+          story.hasFlag("episode.sharedTaskStarted")
+            ? "Turn the seized valve behind the laundry sink."
+            : story.hasFlag("episode.secondHousemateTalk")
+              ? "Return to the laundry with Zayan and trace the leak."
+              : story.hasFlag("episode.bloodSeen")
+                ? "Ask Zayan about the mark beneath the laundry sink."
+                : story.hasFlag("episode.sawArenSweep")
+                  ? "Inspect the dark mark beneath the laundry sink."
+                  : "Find Zayan in the laundry room.",
+          story.hasFlag("episode.sharedTaskStarted")
+            ? OBJECTIVE_DESTINATIONS.pipe
+            : OBJECTIVE_DESTINATIONS.laundry,
+        );
+        return;
+      }
       story.setFlag("episode.dayTwoRested", true);
       this.advanceTo(3, "evening");
       story.setFlag("episode.returnedFromWorkDay3", true);
       this.options.world.setEntryDoorOpen(true);
       this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
-      this.options.transition("Day three. You wake, go through another ordinary shift, and return to the house after dark. Before you reach the stairs, you hear the tenant shouting at Aren.");
+      this.options.transition("Day three. You wake, go through another ordinary shift, and return to the house after dark. Before you reach the stairs, you hear the tenant shouting at Zayan.");
       this.options.setObjective("Go through the hall. The tenant's voice is raised.", OBJECTIVE_DESTINATIONS.arenDining);
     } else if (story.hasFlag("episode.planMade") && story.value.day === 3) {
       story.setFlag("episode.sundayMorning", true);
@@ -1016,8 +1094,11 @@ export class EpisodeOne {
       story.setFlag("episode.arenRoomAvailable", true);
       this.options.world.setArenRoomAvailable(true);
       this.options.characters.despawn("housemate");
-      this.options.transition("Sunday. No commute, no office. You wake to an empty house and no answer from Aren's room.");
-      this.options.setObjective("Try Aren's upstairs door.", OBJECTIVE_DESTINATIONS.arenDoor);
+      this.options.transition(
+        "The house is quiet. Zayan does not answer from his room.",
+        "DAY 4 — THE LAST DAY",
+      );
+      this.options.setObjective("Try Zayan's upstairs door.", OBJECTIVE_DESTINATIONS.arenDoor);
     } else {
       this.options.showToast("There is more to settle before you can sleep.");
       return;
@@ -1029,7 +1110,7 @@ export class EpisodeOne {
   private checkArenRoom(): void {
     const { story, world } = this.options;
     if (!story.hasFlag("episode.sundayMorning") || !story.hasFlag("episode.planMade")) {
-      this.options.showToast("The door is shut. Aren asked you to give him some privacy.");
+      this.options.showToast("The door is shut. Zayan asked you to give him some privacy.");
       return;
     }
     if (!story.hasFlag("episode.arenDoorKnocked")) {
@@ -1037,19 +1118,19 @@ export class EpisodeOne {
       this.say({
         id: "episode-aren-door-knock",
         lines: [
-          { speaker: "You", text: "Aren? It's me." },
+          { speaker: "You", text: "Zayan? It's me." },
           { speaker: "The house", text: "No answer. You knock again. Somewhere downstairs, a latch clicks." },
         ],
         onComplete: () => {
           world.setArenRoomDoorOpen(true);
-          this.options.setObjective("Enter Aren's room and check inside.", OBJECTIVE_DESTINATIONS.arenDoor);
+          this.options.setObjective("Enter Zayan's room and check inside.", OBJECTIVE_DESTINATIONS.arenDoor);
           this.options.saveCheckpoint();
         },
       });
       return;
     }
     world.setArenRoomDoorOpen(true);
-    this.options.showToast("The latch has released. Step into Aren's room.");
+    this.options.showToast("The latch has released. Step into Zayan's room.");
   }
 
   private discoverFriendRoom(): void {
@@ -1057,9 +1138,9 @@ export class EpisodeOne {
     this.say({
       id: "episode-aren-room-empty",
       lines: [
-        { speaker: "You", text: "Aren?" },
+        { speaker: "You", text: "Zayan?" },
         { speaker: "You", text: "The room is empty. His coat is gone, but the window is still latched." },
-        { speaker: "You", text: "The tenant warned me about one room. If Aren is anywhere, it has to be behind that door." },
+        { speaker: "You", text: "The tenant warned me about one room. If Zayan is anywhere, it has to be behind that door." },
       ],
       onComplete: () => {
         this.options.story.setFlag("episode.arenRoomChecked", true);
@@ -1165,7 +1246,7 @@ export class EpisodeOne {
                   id: "episode-canonical-reveal",
                   lines: [
                     { speaker: "Tenant", text: "You came back for him." },
-                    { speaker: "Aren", text: "You came." },
+                    { speaker: "Zayan", text: "You came." },
                     { speaker: "Tenant", text: "I kept the rooms occupied so it would have somewhere to go." },
                     { speaker: "You", text: "The doors. The sounds. The marks on the walls. I was here before I arrived." },
                     { speaker: "You", text: "You are not alone." },
@@ -1185,7 +1266,7 @@ export class EpisodeOne {
     if (snapshot.flags["episode.helpedAren"] === true && snapshot.flags["episode.fireEchoFound"] === true) {
       return {
         title: "THE HOUSE REMEMBERS",
-        text: "Aren's warning was meant to protect you. The fire was not the beginning. You leave the room with the truth—and the sound of a second set of footsteps.",
+        text: "Zayan's warning was meant to protect you. The fire was not the beginning. You leave the room with the truth—and the sound of a second set of footsteps.",
       };
     }
     if (count >= 8 && snapshot.flags["episode.tenantConfronted"] === true) {

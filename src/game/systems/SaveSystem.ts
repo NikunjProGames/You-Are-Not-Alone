@@ -1,4 +1,4 @@
-import type { StorySnapshot, StoryValue } from "../types";
+import type { StorySnapshot } from "../types";
 
 const STORAGE_KEY = "you-are-not-alone:checkpoint";
 const SAVE_VERSION = 1;
@@ -56,26 +56,21 @@ export class SaveSystem {
 }
 
 function migrateFriendName(snapshot: StorySnapshot): StorySnapshot {
-  snapshot.flags = renameFlagRecord(snapshot.flags);
-  snapshot.choices = renameStringRecord(snapshot.choices);
+  snapshot.flags = Object.fromEntries(
+    Object.entries(snapshot.flags).map(([key, value]) => [
+      renameStoredName(key),
+      typeof value === "string" ? renameDisplayName(value) : value,
+    ]),
+  );
+  snapshot.choices = Object.fromEntries(
+    Object.entries(snapshot.choices).map(([key, value]) => [
+      renameStoredName(key),
+      renameStoredName(value),
+    ]),
+  );
   snapshot.discoveries = snapshot.discoveries.map(renameStoredName);
   snapshot.completedEvents = snapshot.completedEvents.map(renameStoredName);
   return snapshot;
-}
-
-function renameFlagRecord(flags: Record<string, StoryValue>): Record<string, StoryValue> {
-  return Object.fromEntries(
-    Object.entries(flags).map(([key, value]) => [
-      renameStoredName(key),
-      typeof value === "string" ? renameStoredName(value) : value,
-    ]),
-  );
-}
-
-function renameStringRecord(record: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(record).map(([key, value]) => [renameStoredName(key), renameStoredName(value)]),
-  );
 }
 
 function renameStoredName(value: string): string {
@@ -83,6 +78,10 @@ function renameStoredName(value: string): string {
     if (match === match.toUpperCase()) return "AREN";
     return match[0] === match[0].toUpperCase() ? "Aren" : "aren";
   });
+}
+
+function renameDisplayName(value: string): string {
+  return value.replace(/\b(?:mara|silas|aren|aaron)\b/gi, "Zayan");
 }
 
 function isStorySnapshot(value: unknown): value is StorySnapshot {
