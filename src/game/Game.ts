@@ -485,7 +485,7 @@ export class Game {
     const pixelBudgetRatio = Math.sqrt(4_194_304 / (width * height));
     this.pixelRatioCeiling = Math.min(
       window.devicePixelRatio || 1,
-      this.mobileQuality ? 1.15 : 1.6,
+      this.mobileQuality ? 1.75 : 1.6,
       pixelBudgetRatio,
     );
     this.pixelRatio = this.pixelRatio > 0
@@ -507,13 +507,15 @@ export class Game {
     this.qualityFrameTime = 0;
     this.qualityFrames = 0;
 
-    if (averageFrameTime > 0.021 && this.pixelRatio > 0.75) {
+    const frameTimeLimit = this.mobileQuality ? 0.028 : 0.021;
+    const pixelRatioFloor = this.mobileQuality ? 1 : 0.75;
+    if (averageFrameTime > frameTimeLimit && this.pixelRatio > pixelRatioFloor) {
       this.qualityRecoveryElapsed = 0;
-      this.pixelRatio = Math.max(0.75, this.pixelRatio - 0.1);
+      this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.1);
       this.applyRenderScale(window.innerWidth, window.innerHeight);
       return;
     }
-    if (averageFrameTime > 0.021 && !this.mobileQuality && this.renderer.shadowMap.enabled) {
+    if (averageFrameTime > frameTimeLimit && !this.mobileQuality && this.renderer.shadowMap.enabled) {
       this.qualityRecoveryElapsed = 0;
       this.adaptiveShadowsDisabled = true;
       this.renderer.shadowMap.enabled = false;

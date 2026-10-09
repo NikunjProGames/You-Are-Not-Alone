@@ -611,6 +611,47 @@ export class EpisodeOne {
       });
       return;
     }
+    if (
+      story.hasFlag("episode.tenantLedger") &&
+      story.hasFlag("episode.tenantRecording") &&
+      !story.hasFlag("episode.scoldingSeen") &&
+      !story.hasFlag("episode.tenantEvidenceDiscussed")
+    ) {
+      this.say({
+        id: "episode-discuss-tenant-evidence",
+        lines: [
+          { speaker: "You", text: "The repair dates don't match, and the recording says the rooms must stay occupied." },
+          { speaker: "Zayan", text: "That sounds like the tenant, but it doesn't tell us what happened to the last renter—or what this house is doing." },
+          { speaker: "You", text: "I want to hear your side before I decide what the evidence means." },
+          { speaker: "Zayan", text: "Then wait until you've seen how the tenant treats me when they think you aren't listening. After that, we'll talk." },
+        ],
+        onComplete: () => {
+          story.setFlag("episode.tenantEvidenceDiscussed", true);
+          if (!story.hasFlag("episode.sharedTask")) {
+            this.options.setObjective(
+              story.hasFlag("episode.sharedTaskStarted")
+                ? "Turn the seized valve behind the laundry sink and stop the leak."
+                : "Return to the laundry with Zayan and trace the leak beneath the sink.",
+              story.hasFlag("episode.sharedTaskStarted")
+                ? OBJECTIVE_DESTINATIONS.pipe
+                : OBJECTIVE_DESTINATIONS.laundry,
+            );
+          } else if (!story.hasFlag("episode.returnedFromWorkDay3")) {
+            this.options.setObjective(
+              "Return upstairs and rest. You and Zayan will talk after you see how the tenant treats him.",
+              OBJECTIVE_DESTINATIONS.upstairsBed,
+            );
+          } else {
+            this.options.setObjective(
+              "Go through the hall. The tenant's voice is raised.",
+              OBJECTIVE_DESTINATIONS.arenDining,
+            );
+          }
+          this.options.saveCheckpoint();
+        },
+      });
+      return;
+    }
     if (story.hasFlag("episode.bloodSeen") && !story.hasFlag("episode.secondHousemateTalk")) {
       this.say({
         id: "episode-housemate-stain-confrontation",
