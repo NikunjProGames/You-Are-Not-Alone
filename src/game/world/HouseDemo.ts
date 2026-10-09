@@ -225,7 +225,7 @@ export function buildHouseDemo(
     coatColor: "#292e34",
     shirtColor: "#b0a895",
     skinColor: "#99806d",
-    hairColor: "#77766f",
+    hairColor: "#55534f",
     trousersColor: "#25282b",
     scaleX: 1.12,
     scaleY: 1.04,
@@ -1566,22 +1566,22 @@ function createDemoFigure(appearance: FigureAppearance): THREE.Group {
     roughness: 0.86,
   });
   const skinShadow = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(appearance.skinColor).multiplyScalar(0.68),
+    color: new THREE.Color(appearance.skinColor).multiplyScalar(0.84),
     roughness: 0.92,
   });
   const lip = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(appearance.skinColor).lerp(new THREE.Color("#8b5148"), 0.42),
+    color: new THREE.Color(appearance.skinColor).lerp(new THREE.Color("#8b5148"), 0.12),
     roughness: 0.82,
   });
   const hair = new THREE.MeshStandardMaterial({ color: appearance.hairColor, roughness: 0.94 });
   const trousers = new THREE.MeshStandardMaterial({ color: appearance.trousersColor, roughness: 0.97 });
-  const eyes = new THREE.MeshStandardMaterial({ color: "#e5ddd0", roughness: 0.38 });
+  const eyes = new THREE.MeshStandardMaterial({ color: "#ded8cc", roughness: 0.48 });
   const iris = new THREE.MeshStandardMaterial({
     color: appearance.faceStyle === "tenant" ? "#667064" : "#55483d",
     roughness: 0.42,
   });
   const dark = new THREE.MeshStandardMaterial({ color: "#29231f", roughness: 0.93 });
-  const pupil = new THREE.MeshStandardMaterial({ color: "#171514", roughness: 0.28 });
+  const pupil = new THREE.MeshStandardMaterial({ color: "#221e1b", roughness: 0.38 });
 
   const torso = new THREE.LatheGeometry(
     [
@@ -1608,135 +1608,19 @@ function createDemoFigure(appearance: FigureAppearance): THREE.Group {
   sleeveRight.rotation.z = 0.105;
   addPart(group, new THREE.SphereGeometry(0.085, 12, 10), skin, -0.4, 0.78, 0.035);
   addPart(group, new THREE.SphereGeometry(0.085, 12, 10), skin, 0.4, 0.78, 0.035);
-  addPart(group, new THREE.CylinderGeometry(0.09, 0.1, 0.2, 12), shirt, 0, 1.59, 0);
-  addPart(group, new THREE.CylinderGeometry(0.075, 0.095, 0.23, 16), skin, 0, 1.66, -0.005);
-  const face = FACE_SHAPES[appearance.faceStyle];
-  const headProfile = [
-    [0.095, 0.015],
-    [0.125, 0.045],
-    [face.jaw * 0.17, 0.105],
-    [face.cheek * 0.19, 0.19],
-    [face.temple * 0.18, 0.285],
-    [face.temple * 0.17, 0.365],
-    [0.132, 0.43],
-    [0.082, 0.475],
-    [0, 0.49],
-  ].map(([radius, height]) => new THREE.Vector2(radius * face.width, height * face.height));
-  const headGeometry = new THREE.LatheGeometry(headProfile, 32);
-  headGeometry.computeVertexNormals();
-  addPart(group, headGeometry, skin, 0, 1.61, 0);
-
-  const eyeY = 1.89;
-  const eyeSpacing = face.eyeSpacing;
-  const eyeSocket = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(appearance.skinColor).multiplyScalar(0.78),
-    roughness: 0.95,
-  });
-  const brows: Array<[number, number]> = [[-1, face.browTilt], [1, -face.browTilt]];
-  for (const side of [-1, 1]) {
-    const x = side * eyeSpacing;
-    const cheek = addPart(
-      group,
-      new THREE.SphereGeometry(1, 18, 14),
-      skin,
-      side * 0.105 * face.width,
-      1.765,
-      0.112,
-    );
-    cheek.scale.set(0.078 * face.cheek, 0.068, 0.038);
-
-    const socket = addPart(group, new THREE.SphereGeometry(1, 18, 14), eyeSocket, x, eyeY, 0.146);
-    socket.scale.set(0.048, 0.034, 0.021);
-    const eyeball = addPart(group, new THREE.SphereGeometry(1, 20, 16), eyes, x, eyeY, 0.16);
-    eyeball.scale.set(0.033, 0.023, 0.025);
-    const irisMesh = addPart(group, new THREE.SphereGeometry(1, 16, 12), iris, x, eyeY - 0.001, 0.181);
-    irisMesh.scale.set(0.0145, 0.017, 0.008);
-    const pupilMesh = addPart(group, new THREE.SphereGeometry(1, 14, 10), pupil, x, eyeY - 0.001, 0.187);
-    pupilMesh.scale.set(0.007, 0.010, 0.004);
-    const catchlight = new THREE.MeshBasicMaterial({ color: "#f2eadd" });
-    const highlight = addPart(group, new THREE.SphereGeometry(0.0035, 8, 6), catchlight, x - 0.004, eyeY + 0.006, 0.191);
-    highlight.castShadow = false;
-
-    const [browSide, tilt] = brows[side === -1 ? 0 : 1];
-    const browPoints = [
-      new THREE.Vector3(browSide * (eyeSpacing - 0.045), eyeY + 0.047 + tilt * 0.3, 0.153),
-      new THREE.Vector3(browSide * eyeSpacing, eyeY + 0.061 + tilt, 0.17),
-      new THREE.Vector3(browSide * (eyeSpacing + 0.045), eyeY + 0.045 - tilt * 0.25, 0.151),
-    ];
-    addFaceCurve(group, hair, browPoints, face.browWeight, 10);
-
-    const upperLidPoints = [
-      new THREE.Vector3(x - 0.034, eyeY + 0.002, 0.173),
-      new THREE.Vector3(x, eyeY + 0.022, 0.181),
-      new THREE.Vector3(x + 0.034, eyeY + 0.002, 0.173),
-    ];
-    addFaceCurve(group, skinShadow, upperLidPoints, 0.0045, 8);
-  }
-
-  const noseBridge = addPart(group, new THREE.SphereGeometry(1, 16, 14), skin, 0, 1.795, 0.166);
-  noseBridge.scale.set(0.026, 0.076, 0.046);
-  const noseTip = addPart(group, new THREE.SphereGeometry(1, 16, 12), skin, 0, 1.727, 0.195);
-  noseTip.scale.set(0.035, 0.026, 0.041);
-  for (const side of [-1, 1]) {
-    const nostril = addPart(group, new THREE.SphereGeometry(1, 10, 8), skinShadow, side * 0.022, 1.71, 0.205);
-    nostril.scale.set(0.009, 0.006, 0.005);
-
-    const ear = addPart(group, new THREE.SphereGeometry(1, 16, 12), skin, side * 0.174, 1.815, -0.012);
-    ear.scale.set(0.036, 0.061, 0.035);
-    const innerEar = addPart(group, new THREE.SphereGeometry(1, 12, 10), skinShadow, side * 0.184, 1.816, 0.008);
-    innerEar.scale.set(0.016, 0.036, 0.014);
-  }
-
-  const upperLipPoints = [
-    new THREE.Vector3(-0.043, 1.666, 0.117),
-    new THREE.Vector3(-0.021, 1.674, 0.126),
-    new THREE.Vector3(0, 1.669, 0.13),
-    new THREE.Vector3(0.021, 1.674, 0.126),
-    new THREE.Vector3(0.043, 1.666, 0.117),
-  ];
-  const lowerLipPoints = [
-    new THREE.Vector3(-0.038, 1.659, 0.119),
-    new THREE.Vector3(0, 1.65, 0.128),
-    new THREE.Vector3(0.038, 1.659, 0.119),
-  ];
-  addFaceCurve(group, lip, upperLipPoints, 0.006, 14);
-  addFaceCurve(group, lip, lowerLipPoints, 0.006, 12);
-  addFaceCurve(
-    group,
-    skinShadow,
-    [new THREE.Vector3(-0.034, 1.662, 0.123), new THREE.Vector3(0, 1.661, 0.13), new THREE.Vector3(0.034, 1.662, 0.123)],
-    0.0025,
-    10,
+  const neck = new THREE.LatheGeometry(
+    [
+      new THREE.Vector2(0.11, 0),
+      new THREE.Vector2(0.088, 0.045),
+      new THREE.Vector2(0.071, 0.12),
+      new THREE.Vector2(0.058, 0.2),
+    ],
+    24,
   );
-  addPart(group, new THREE.SphereGeometry(0.18, 18, 12), skin, 0, 1.625, -0.02).scale.set(0.68, 0.16, 0.74);
+  addPart(group, neck, skin, 0, 1.36, -0.035);
+  addPart(group, new THREE.CylinderGeometry(0.072, 0.105, 0.12, 24), shirt, 0, 1.475, 0);
+  createHumanHead(group, appearance.faceStyle, skin, skinShadow, lip, hair, eyes, iris, pupil);
   addPart(group, new THREE.BoxGeometry(0.18, 0.055, 0.11), coat, 0, 1.48, 0.11);
-
-  const hairCap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.205, 28, 18, 0, Math.PI * 2, 0, face.hairCapAngle),
-    hair,
-  );
-  hairCap.position.set(0, 1.905, -0.008);
-  hairCap.scale.set(face.hairWidth, 1, 0.98);
-  hairCap.castShadow = true;
-  group.add(hairCap);
-  for (const lock of face.hairLocks) {
-    const tuft = addPart(group, new THREE.SphereGeometry(1, 14, 10), hair, lock.x, lock.y, lock.z);
-    tuft.scale.set(lock.sx, lock.sy, lock.sz);
-    tuft.rotation.z = lock.rotation;
-  }
-  if (appearance.faceStyle === "tenant") {
-    for (const side of [-1, 1]) {
-      const sideHair = addPart(
-        group,
-        new THREE.SphereGeometry(0.09, 14, 10),
-        hair,
-        side * 0.148,
-        1.84,
-        -0.025,
-      );
-      sideHair.scale.set(0.45, 1.85, 0.8);
-    }
-  }
 
   addPart(group, new THREE.SphereGeometry(0.024, 8, 8), new THREE.MeshStandardMaterial({ color: "#aa8a62", metalness: 0.56 }), 0, 1.25, 0.265);
   addPart(group, new THREE.SphereGeometry(0.024, 8, 8), new THREE.MeshStandardMaterial({ color: "#aa8a62", metalness: 0.56 }), 0, 1.03, 0.27);
@@ -1744,67 +1628,571 @@ function createDemoFigure(appearance: FigureAppearance): THREE.Group {
 }
 
 interface FaceShape {
-  width: number;
-  height: number;
-  jaw: number;
-  cheek: number;
-  temple: number;
-  eyeSpacing: number;
-  browTilt: number;
+  profile: Array<{ y: number; width: number; depth: number }>;
+  eyeX: number;
+  eyeY: number;
+  browInnerY: number;
+  browOuterY: number;
   browWeight: number;
-  hairCapAngle: number;
-  hairWidth: number;
-  hairLocks: Array<{ x: number; y: number; z: number; sx: number; sy: number; sz: number; rotation: number }>;
+  noseProjection: number;
+  earScale: number;
+  mouthWidth: number;
+  hairFront: number;
+  hairBack: number;
+  hairVolume: number;
+  hairStyle: "swept" | "textured" | "parted";
 }
 
 const FACE_SHAPES: Record<FigureAppearance["faceStyle"], FaceShape> = {
   protagonist: {
-    width: 1,
-    height: 1.04,
-    jaw: 0.78,
-    cheek: 0.94,
-    temple: 1,
-    eyeSpacing: 0.063,
-    browTilt: 0.002,
-    browWeight: 0.009,
-    hairCapAngle: 1.12,
-    hairWidth: 0.96,
-    hairLocks: [
-      { x: -0.055, y: 2.035, z: 0.105, sx: 0.093, sy: 0.04, sz: 0.075, rotation: 0.14 },
-      { x: 0.035, y: 2.045, z: 0.09, sx: 0.105, sy: 0.035, sz: 0.065, rotation: -0.1 },
+    profile: [
+      { y: -0.09, width: 0.045, depth: 0.04 },
+      { y: -0.05, width: 0.092, depth: 0.078 },
+      { y: 0, width: 0.112, depth: 0.104 },
+      { y: 0.035, width: 0.12, depth: 0.11 },
+      { y: 0.105, width: 0.13, depth: 0.12 },
+      { y: 0.19, width: 0.14, depth: 0.13 },
+      { y: 0.26, width: 0.15, depth: 0.138 },
+      { y: 0.34, width: 0.145, depth: 0.137 },
+      { y: 0.42, width: 0.124, depth: 0.122 },
+      { y: 0.478, width: 0.075, depth: 0.079 },
+      { y: 0.5, width: 0.008, depth: 0.012 },
     ],
+    eyeX: 0.051,
+    eyeY: 0.302,
+    browInnerY: 0.345,
+    browOuterY: 0.338,
+    browWeight: 0.0028,
+    noseProjection: 0.041,
+    earScale: 1,
+    mouthWidth: 0.041,
+    hairFront: 0.373,
+    hairBack: 0.31,
+    hairVolume: 0.018,
+    hairStyle: "swept",
   },
   zayan: {
-    width: 1.04,
-    height: 1,
-    jaw: 0.91,
-    cheek: 1.08,
-    temple: 1.03,
-    eyeSpacing: 0.067,
-    browTilt: 0.008,
-    browWeight: 0.012,
-    hairCapAngle: 1.3,
-    hairWidth: 1,
-    hairLocks: [
-      { x: -0.105, y: 2.025, z: 0.052, sx: 0.071, sy: 0.055, sz: 0.09, rotation: -0.32 },
-      { x: -0.025, y: 2.055, z: 0.075, sx: 0.072, sy: 0.045, sz: 0.085, rotation: 0.1 },
-      { x: 0.065, y: 2.04, z: 0.044, sx: 0.09, sy: 0.052, sz: 0.09, rotation: 0.42 },
+    profile: [
+      { y: -0.09, width: 0.046, depth: 0.042 },
+      { y: -0.05, width: 0.095, depth: 0.08 },
+      { y: 0, width: 0.115, depth: 0.107 },
+      { y: 0.035, width: 0.123, depth: 0.114 },
+      { y: 0.105, width: 0.13, depth: 0.12 },
+      { y: 0.19, width: 0.145, depth: 0.132 },
+      { y: 0.26, width: 0.153, depth: 0.14 },
+      { y: 0.34, width: 0.149, depth: 0.138 },
+      { y: 0.42, width: 0.13, depth: 0.123 },
+      { y: 0.478, width: 0.078, depth: 0.081 },
+      { y: 0.5, width: 0.008, depth: 0.012 },
     ],
+    eyeX: 0.053,
+    eyeY: 0.299,
+    browInnerY: 0.341,
+    browOuterY: 0.339,
+    browWeight: 0.003,
+    noseProjection: 0.043,
+    earScale: 0.98,
+    mouthWidth: 0.04,
+    hairFront: 0.365,
+    hairBack: 0.3,
+    hairVolume: 0.013,
+    hairStyle: "textured",
   },
   tenant: {
-    width: 0.94,
-    height: 1.08,
-    jaw: 0.72,
-    cheek: 0.91,
-    temple: 0.93,
-    eyeSpacing: 0.06,
-    browTilt: -0.004,
-    browWeight: 0.01,
-    hairCapAngle: 0.83,
-    hairWidth: 0.96,
-    hairLocks: [],
+    profile: [
+      { y: -0.09, width: 0.042, depth: 0.038 },
+      { y: -0.05, width: 0.09, depth: 0.076 },
+      { y: 0, width: 0.109, depth: 0.101 },
+      { y: 0.035, width: 0.117, depth: 0.108 },
+      { y: 0.105, width: 0.126, depth: 0.116 },
+      { y: 0.19, width: 0.136, depth: 0.128 },
+      { y: 0.26, width: 0.145, depth: 0.135 },
+      { y: 0.34, width: 0.14, depth: 0.134 },
+      { y: 0.42, width: 0.12, depth: 0.12 },
+      { y: 0.478, width: 0.074, depth: 0.078 },
+      { y: 0.5, width: 0.008, depth: 0.012 },
+    ],
+    eyeX: 0.049,
+    eyeY: 0.303,
+    browInnerY: 0.348,
+    browOuterY: 0.336,
+    browWeight: 0.0028,
+    noseProjection: 0.039,
+    earScale: 0.96,
+    mouthWidth: 0.038,
+    hairFront: 0.386,
+    hairBack: 0.315,
+    hairVolume: 0.018,
+    hairStyle: "parted",
   },
 };
+
+function createHumanHead(
+  character: THREE.Group,
+  style: FigureAppearance["faceStyle"],
+  skin: THREE.MeshStandardMaterial,
+  skinShadow: THREE.MeshStandardMaterial,
+  lip: THREE.MeshStandardMaterial,
+  hair: THREE.MeshStandardMaterial,
+  eyeWhite: THREE.MeshStandardMaterial,
+  iris: THREE.MeshStandardMaterial,
+  pupil: THREE.MeshStandardMaterial,
+): void {
+  const face = FACE_SHAPES[style];
+  const head = new THREE.Group();
+  head.name = `${style}-head`;
+  head.position.y = 1.57;
+  head.scale.y = 0.92;
+  character.add(head);
+
+  const headGeometry = createHeadSurface(face);
+  const headMesh = new THREE.Mesh(headGeometry, skin);
+  headMesh.castShadow = true;
+  headMesh.receiveShadow = true;
+  head.add(headMesh);
+
+  const socketMaterial = skin;
+  for (const side of [-1, 1]) {
+    const x = side * face.eyeX;
+    const y = face.eyeY;
+    const z = faceSurfaceZ(x, y, face);
+    const eyeball = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), eyeWhite);
+    eyeball.position.set(x, y, z + 0.006);
+    eyeball.scale.set(0.023, 0.012, 0.007);
+    eyeball.castShadow = false;
+    head.add(eyeball);
+
+    const irisMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), iris);
+    irisMesh.position.set(x, y - 0.001, z + 0.014);
+    irisMesh.scale.set(0.009, 0.009, 0.003);
+    irisMesh.castShadow = false;
+    head.add(irisMesh);
+
+    const pupilMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), pupil);
+    pupilMesh.position.set(x, y - 0.001, z + 0.017);
+    pupilMesh.scale.set(0.004, 0.005, 0.0018);
+    pupilMesh.castShadow = false;
+    head.add(pupilMesh);
+
+    const catchlight = new THREE.MeshBasicMaterial({ color: "#f2eadd" });
+    const highlight = new THREE.Mesh(new THREE.SphereGeometry(0.0022, 8, 6), catchlight);
+    highlight.position.set(x - 0.003, y + 0.003, z + 0.019);
+    highlight.castShadow = false;
+    head.add(highlight);
+
+    const upperLid = [-1, 0, 1].map((offset) => {
+      const lidX = x + offset * 0.027;
+      const lidY = y + (offset === 0 ? 0.013 : 0.002);
+      return new THREE.Vector3(lidX, lidY, faceSurfaceZ(lidX, lidY, face) + 0.002);
+    });
+    const lowerLid = [-1, 0, 1].map((offset) => {
+      const lidX = x + offset * 0.025;
+      const lidY = y + (offset === 0 ? -0.013 : -0.001);
+      return new THREE.Vector3(lidX, lidY, faceSurfaceZ(lidX, lidY, face) + 0.0015);
+    });
+    addFaceCurve(head, socketMaterial, upperLid, 0.0022, 10);
+    addFaceCurve(head, socketMaterial, lowerLid, 0.0018, 10);
+
+    const innerY = face.browInnerY;
+    const outerY = face.browOuterY;
+    const browMidX = face.eyeX + 0.002;
+    const browMidY = (innerY + outerY) * 0.5 + 0.009;
+    const browPoints = [
+      [face.eyeX - 0.032, innerY],
+      [face.eyeX - 0.017, browMidY - 0.002],
+      [browMidX, browMidY],
+      [face.eyeX + 0.019, browMidY - 0.002],
+      [face.eyeX + 0.035, outerY],
+    ].map(([browX, browY]) => {
+      const x = side * browX;
+      return new THREE.Vector3(x, browY, faceSurfaceZ(x, browY, face) + 0.002);
+    });
+    addFaceCurve(head, hair, browPoints, face.browWeight, 12);
+  }
+
+  if (style === "tenant") addTenantGlasses(head, face);
+
+  addNose(head, face, skin);
+  for (const side of [-1, 1]) {
+    const nostrilX = side * 0.017;
+    const nostrilPoints = [
+      new THREE.Vector3(nostrilX - side * 0.006, 0.153, noseSurfaceZ(nostrilX - side * 0.006, 0.153, face) + 0.0008),
+      new THREE.Vector3(nostrilX, 0.15, noseSurfaceZ(nostrilX, 0.15, face) + 0.0008),
+      new THREE.Vector3(nostrilX + side * 0.005, 0.154, noseSurfaceZ(nostrilX + side * 0.005, 0.154, face) + 0.0008),
+    ];
+    addFaceCurve(head, skinShadow, nostrilPoints, 0.0008, 6);
+
+    const ear = createEar(face.earScale, skin, skinShadow);
+    ear.position.set(side * 0.145, 0.255, -0.012);
+    ear.rotation.y = side * 1.02;
+    head.add(ear);
+  }
+
+  const mouthY = 0.111;
+  const mouth = [
+    new THREE.Vector3(-face.mouthWidth, mouthY, faceSurfaceZ(-face.mouthWidth, mouthY, face) + 0.003),
+    new THREE.Vector3(-face.mouthWidth * 0.52, mouthY + 0.005, faceSurfaceZ(-face.mouthWidth * 0.52, mouthY + 0.005, face) + 0.004),
+    new THREE.Vector3(0, mouthY + 0.002, faceSurfaceZ(0, mouthY + 0.002, face) + 0.004),
+    new THREE.Vector3(face.mouthWidth * 0.52, mouthY + 0.005, faceSurfaceZ(face.mouthWidth * 0.52, mouthY + 0.005, face) + 0.004),
+    new THREE.Vector3(face.mouthWidth, mouthY, faceSurfaceZ(face.mouthWidth, mouthY, face) + 0.003),
+  ];
+  const lowerLip = [
+    new THREE.Vector3(-face.mouthWidth * 0.86, mouthY - 0.004, faceSurfaceZ(-face.mouthWidth * 0.86, mouthY - 0.004, face) + 0.003),
+    new THREE.Vector3(0, mouthY - 0.011, faceSurfaceZ(0, mouthY - 0.011, face) + 0.004),
+    new THREE.Vector3(face.mouthWidth * 0.86, mouthY - 0.004, faceSurfaceZ(face.mouthWidth * 0.86, mouthY - 0.004, face) + 0.003),
+  ];
+  addFaceCurve(head, lip, mouth, 0.0018, 16);
+  addFaceCurve(head, lip, lowerLip, 0.0021, 12);
+
+  addHairCap(head, face, hair);
+}
+
+function createHeadSurface(face: FaceShape): THREE.BufferGeometry {
+  const rows = 88;
+  const columns = 96;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    const y = THREE.MathUtils.lerp(-0.09, 0.498, row / (rows - 1));
+    const profile = sampleFaceProfile(y, face);
+    for (let column = 0; column < columns; column += 1) {
+      const angle = (column / columns) * Math.PI * 2;
+      const sin = Math.sin(angle);
+      const cos = Math.cos(angle);
+      const x = profile.width * sin;
+      const front = THREE.MathUtils.smoothstep(cos, 0, 1);
+      const z = profile.depth * cos + faceRelief(x, y, face) * front;
+      positions.push(x, y, z);
+    }
+  }
+  for (let row = 0; row < rows - 1; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const nextColumn = (column + 1) % columns;
+      const a = row * columns + column;
+      const b = row * columns + nextColumn;
+      const c = (row + 1) * columns + column;
+      const d = (row + 1) * columns + nextColumn;
+      indices.push(a, b, c, b, d, c);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  averageRadialSeam(geometry, columns, rows);
+  return geometry;
+}
+
+function sampleFaceProfile(y: number, face: FaceShape): { width: number; depth: number } {
+  const profile = face.profile;
+  let segment = 0;
+  while (segment < profile.length - 2 && profile[segment + 1].y < y) segment += 1;
+  const p0 = profile[Math.max(0, segment - 1)];
+  const p1 = profile[segment];
+  const p2 = profile[segment + 1];
+  const p3 = profile[Math.min(profile.length - 1, segment + 2)];
+  const t = THREE.MathUtils.clamp((y - p1.y) / (p2.y - p1.y), 0, 1);
+  const interpolate = (v0: number, v1: number, v2: number, v3: number): number =>
+    0.5 * (
+      2 * v1 +
+      (-v0 + v2) * t +
+      (2 * v0 - 5 * v1 + 4 * v2 - v3) * t * t +
+      (-v0 + 3 * v1 - 3 * v2 + v3) * t * t * t
+    );
+  return {
+    width: interpolate(p0.width, p1.width, p2.width, p3.width),
+    depth: interpolate(p0.depth, p1.depth, p2.depth, p3.depth),
+  };
+}
+
+function faceRelief(x: number, y: number, face: FaceShape): number {
+  const gaussian = (px: number, py: number, sx: number, sy: number): number =>
+    Math.exp(-((x - px) ** 2) / (2 * sx * sx) - ((y - py) ** 2) / (2 * sy * sy));
+  const eyeX = face.eyeX;
+  return (
+    face.noseProjection * 0.14 * gaussian(0, 0.219, 0.018, 0.073) +
+    face.noseProjection * 0.2 * gaussian(0, 0.17, 0.026, 0.03) +
+    face.noseProjection * 0.05 * gaussian(0, 0.151, 0.036, 0.021) +
+    face.noseProjection * 0.035 * (
+      gaussian(-0.018, 0.173, 0.014, 0.02) +
+      gaussian(0.018, 0.173, 0.014, 0.02)
+    ) +
+    0.009 * (gaussian(-eyeX, 0.343, 0.043, 0.022) + gaussian(eyeX, 0.343, 0.043, 0.022)) -
+    0.012 * (gaussian(-eyeX, face.eyeY, 0.032, 0.019) + gaussian(eyeX, face.eyeY, 0.032, 0.019)) +
+    0.011 * (gaussian(-0.092, 0.231, 0.045, 0.061) + gaussian(0.092, 0.231, 0.045, 0.061)) +
+    0.014 * gaussian(0, -0.015, 0.052, 0.032) -
+    0.003 * gaussian(0, 0.113, 0.047, 0.018)
+  );
+}
+
+function faceSurfaceZ(x: number, y: number, face: FaceShape): number {
+  const profile = sampleFaceProfile(THREE.MathUtils.clamp(y, 0.003, 0.497), face);
+  const normalizedX = THREE.MathUtils.clamp(x / profile.width, -0.985, 0.985);
+  const front = Math.sqrt(1 - normalizedX * normalizedX);
+  return profile.depth * front + faceRelief(x, y, face);
+}
+
+const NOSE_PROFILE = [
+  { y: 0.14, width: 0.017, projection: 0.001 },
+  { y: 0.155, width: 0.023, projection: 0.006 },
+  { y: 0.17, width: 0.03, projection: 0.012 },
+  { y: 0.181, width: 0.03, projection: 0.014 },
+  { y: 0.194, width: 0.026, projection: 0.011 },
+  { y: 0.216, width: 0.019, projection: 0.006 },
+  { y: 0.24, width: 0.012, projection: 0.001 },
+];
+
+function sampleNoseProfile(y: number): { width: number; projection: number } {
+  let segment = 0;
+  while (segment < NOSE_PROFILE.length - 2 && NOSE_PROFILE[segment + 1].y < y) segment += 1;
+  const from = NOSE_PROFILE[segment];
+  const to = NOSE_PROFILE[segment + 1];
+  const amount = THREE.MathUtils.clamp((y - from.y) / (to.y - from.y), 0, 1);
+  const smooth = amount * amount * (3 - 2 * amount);
+  return {
+    width: THREE.MathUtils.lerp(from.width, to.width, smooth),
+    projection: THREE.MathUtils.lerp(from.projection, to.projection, smooth),
+  };
+}
+
+function noseSurfaceZ(x: number, y: number, face: FaceShape): number {
+  const { width, projection } = sampleNoseProfile(y);
+  const normalizedX = THREE.MathUtils.clamp(x / width, -1, 1);
+  const falloff = Math.cos((normalizedX * Math.PI) / 2) ** 2;
+  return faceSurfaceZ(x, y, face) + 0.001 + projection * falloff;
+}
+
+function addNose(head: THREE.Group, face: FaceShape, skin: THREE.MeshStandardMaterial): void {
+  const rows = 36;
+  const columns = 25;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let row = 0; row < rows; row += 1) {
+    const y = THREE.MathUtils.lerp(NOSE_PROFILE[0].y, NOSE_PROFILE[NOSE_PROFILE.length - 1].y, row / (rows - 1));
+    const { width } = sampleNoseProfile(y);
+    for (let column = 0; column < columns; column += 1) {
+      const across = (column / (columns - 1)) * 2 - 1;
+      const x = width * across;
+      positions.push(x, y, noseSurfaceZ(x, y, face));
+    }
+  }
+  for (let row = 0; row < rows - 1; row += 1) {
+    for (let column = 0; column < columns - 1; column += 1) {
+      const a = row * columns + column;
+      const b = a + 1;
+      const c = a + columns;
+      const d = c + 1;
+      indices.push(a, b, c, b, d, c);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const nose = new THREE.Mesh(geometry, skin);
+  nose.name = `${face.hairStyle}-nose`;
+  nose.castShadow = false;
+  nose.receiveShadow = false;
+  head.add(nose);
+}
+
+function averageRadialSeam(geometry: THREE.BufferGeometry, columns: number, rows: number): void {
+  const normals = geometry.getAttribute("normal");
+  for (let row = 0; row < rows; row += 1) {
+    const first = row * columns;
+    const last = first + columns - 1;
+    const average = new THREE.Vector3(
+      normals.getX(first) + normals.getX(last),
+      normals.getY(first) + normals.getY(last),
+      normals.getZ(first) + normals.getZ(last),
+    ).normalize();
+    normals.setXYZ(first, average.x, average.y, average.z);
+    normals.setXYZ(last, average.x, average.y, average.z);
+  }
+  normals.needsUpdate = true;
+}
+
+function addTenantGlasses(head: THREE.Group, face: FaceShape): void {
+  const frameMaterial = new THREE.MeshStandardMaterial({
+    color: "#302e2a",
+    roughness: 0.48,
+    metalness: 0.18,
+  });
+  for (const side of [-1, 1]) {
+    const lens = new THREE.Shape();
+    traceRoundedRect(lens, 0.034, 0.023, 0.009);
+    const opening = new THREE.Path();
+    traceRoundedRect(opening, 0.028, 0.017, 0.006, true);
+    lens.holes.push(opening);
+
+    const geometry = new THREE.ExtrudeGeometry(lens, {
+      depth: 0.0025,
+      bevelEnabled: false,
+      curveSegments: 8,
+    });
+    const centerX = side * face.eyeX;
+    geometry.translate(centerX, face.eyeY, 0);
+    const positions = geometry.getAttribute("position");
+    for (let index = 0; index < positions.count; index += 1) {
+      const x = positions.getX(index);
+      const y = positions.getY(index);
+      positions.setZ(index, faceSurfaceZ(x, y, face) + 0.005 + positions.getZ(index));
+    }
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
+    const frame = new THREE.Mesh(geometry, frameMaterial);
+    frame.castShadow = false;
+    head.add(frame);
+
+    const outerX = side * (face.eyeX + 0.034);
+    const templePoints = [
+      new THREE.Vector3(outerX, face.eyeY, faceSurfaceZ(outerX, face.eyeY, face) + 0.006),
+      new THREE.Vector3(side * 0.112, face.eyeY - 0.003, faceSurfaceZ(side * 0.112, face.eyeY - 0.003, face) + 0.002),
+      new THREE.Vector3(side * 0.145, face.eyeY - 0.015, faceSurfaceZ(side * 0.145, face.eyeY - 0.015, face) - 0.01),
+    ];
+    addFaceCurve(head, frameMaterial, templePoints, 0.0014, 10);
+  }
+
+  const bridge = [
+    new THREE.Vector3(-0.018, face.eyeY + 0.003, faceSurfaceZ(-0.018, face.eyeY + 0.003, face) + 0.006),
+    new THREE.Vector3(0, face.eyeY + 0.008, faceSurfaceZ(0, face.eyeY + 0.008, face) + 0.005),
+    new THREE.Vector3(0.018, face.eyeY + 0.003, faceSurfaceZ(0.018, face.eyeY + 0.003, face) + 0.006),
+  ];
+  addFaceCurve(head, frameMaterial, bridge, 0.0021, 8);
+}
+
+function traceRoundedRect(
+  path: THREE.Shape | THREE.Path,
+  halfWidth: number,
+  halfHeight: number,
+  radius: number,
+  clockwise = false,
+): void {
+  if (clockwise) {
+    path.moveTo(-halfWidth + radius, -halfHeight);
+    path.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth, -halfHeight + radius);
+    path.lineTo(-halfWidth, halfHeight - radius);
+    path.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth + radius, halfHeight);
+    path.lineTo(halfWidth - radius, halfHeight);
+    path.quadraticCurveTo(halfWidth, halfHeight, halfWidth, halfHeight - radius);
+    path.lineTo(halfWidth, -halfHeight + radius);
+    path.quadraticCurveTo(halfWidth, -halfHeight, halfWidth - radius, -halfHeight);
+  } else {
+    path.moveTo(-halfWidth + radius, -halfHeight);
+    path.lineTo(halfWidth - radius, -halfHeight);
+    path.quadraticCurveTo(halfWidth, -halfHeight, halfWidth, -halfHeight + radius);
+    path.lineTo(halfWidth, halfHeight - radius);
+    path.quadraticCurveTo(halfWidth, halfHeight, halfWidth - radius, halfHeight);
+    path.lineTo(-halfWidth + radius, halfHeight);
+    path.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth, halfHeight - radius);
+    path.lineTo(-halfWidth, -halfHeight + radius);
+    path.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth + radius, -halfHeight);
+  }
+  path.closePath();
+}
+
+function addHairCap(head: THREE.Group, face: FaceShape, material: THREE.Material): void {
+  const rows = 26;
+  const columns = 96;
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let row = 0; row <= rows; row += 1) {
+    const t = row / rows;
+    for (let column = 0; column < columns; column += 1) {
+      const angle = (column / columns) * Math.PI * 2;
+      const front = (Math.cos(angle) + 1) * 0.5;
+      const angularGaussian = (center: number, spread: number): number => {
+        const distance = Math.atan2(Math.sin(angle - center), Math.cos(angle - center));
+        return Math.exp(-(distance * distance) / spread);
+      };
+      const hairline = THREE.MathUtils.lerp(face.hairBack, face.hairFront, front);
+      const irregularity =
+        face.hairStyle === "textured"
+          ? Math.max(0, Math.cos(angle)) * Math.sin(angle * 4) * 0.009
+          : face.hairStyle === "swept"
+          ? Math.sin(angle) * front * 0.012 - front * 0.008
+            : -0.016 * angularGaussian(-0.55, 0.38) +
+              0.005 * angularGaussian(0.5, 0.45) +
+              Math.sin(angle * 5) * front * 0.0015;
+      const y = row === 0 ? 0.509 : THREE.MathUtils.lerp(0.498, hairline + irregularity, t);
+      const profile = sampleFaceProfile(y, face);
+      const sin = Math.sin(angle);
+      const cos = Math.cos(angle);
+      const x = profile.width * sin;
+      const ridge =
+        face.hairStyle === "textured"
+          ? 0.014 * Math.sin(angle * 3 + t * 3) * Math.sin(Math.PI * t)
+          : face.hairStyle === "swept"
+            ? 0.038 * angularGaussian(0.62, 0.42) * Math.sin(Math.PI * t) -
+              0.006 * angularGaussian(0.02, 0.05) * Math.sin(Math.PI * t)
+            : (
+                0.018 * angularGaussian(0.42, 0.45) +
+                0.014 * angularGaussian(-0.38, 0.5) -
+                0.008 * angularGaussian(0, 0.045)
+              ) * Math.sin(Math.PI * t);
+      const lift = face.hairVolume * Math.sin(Math.PI * t) + ridge;
+      const z = profile.depth * cos + faceRelief(x, y, face) * THREE.MathUtils.smoothstep(cos, 0, 1);
+      positions.push(
+        row === 0 ? sin * 0.006 : x + sin * 0.007,
+        row === 0 ? y : y + lift,
+        row === 0 ? cos * 0.006 : z + cos * 0.007,
+      );
+    }
+  }
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const next = (column + 1) % columns;
+      const a = row * columns + column;
+      const b = row * columns + next;
+      const c = (row + 1) * columns + column;
+      const d = (row + 1) * columns + next;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  averageRadialSeam(geometry, columns, rows + 1);
+  const cap = new THREE.Mesh(geometry, material);
+  cap.castShadow = true;
+  cap.receiveShadow = true;
+  head.add(cap);
+}
+
+function createEar(
+  scale: number,
+  skin: THREE.MeshStandardMaterial,
+  skinShadow: THREE.MeshStandardMaterial,
+): THREE.Group {
+  const ear = new THREE.Group();
+  const outline = new THREE.Shape();
+  outline.moveTo(0, -0.047 * scale);
+  outline.bezierCurveTo(-0.026 * scale, -0.038 * scale, -0.032 * scale, 0.004 * scale, -0.025 * scale, 0.032 * scale);
+  outline.bezierCurveTo(-0.02 * scale, 0.052 * scale, 0.004 * scale, 0.053 * scale, 0.018 * scale, 0.034 * scale);
+  outline.bezierCurveTo(0.032 * scale, 0.012 * scale, 0.026 * scale, -0.03 * scale, 0, -0.047 * scale);
+  const geometry = new THREE.ExtrudeGeometry(outline, {
+    depth: 0.015,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    steps: 1,
+    bevelSize: 0.003,
+    bevelThickness: 0.003,
+    curveSegments: 10,
+  });
+  const outer = new THREE.Mesh(geometry, skin);
+  outer.position.z = -0.006;
+  outer.castShadow = true;
+  ear.add(outer);
+  const innerFold = [
+    new THREE.Vector3(-0.006 * scale, -0.025 * scale, 0.014),
+    new THREE.Vector3(0.008 * scale, -0.006 * scale, 0.016),
+    new THREE.Vector3(0.006 * scale, 0.022 * scale, 0.014),
+    new THREE.Vector3(-0.004 * scale, 0.034 * scale, 0.013),
+  ];
+  addFaceCurve(ear, skinShadow, innerFold, 0.0022, 10);
+  return ear;
+}
 
 function addFaceCurve(
   parent: THREE.Object3D,
@@ -1839,8 +2227,8 @@ function addEntityFeatures(entity: THREE.Group): THREE.Group {
     horn.position.set(side * 0.12, 2.02, -0.035);
     horn.rotation.z = side * -0.28;
     features.add(horn);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), ember);
-    eye.position.set(side * 0.072, 1.79, 0.193);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10), ember);
+    eye.position.set(side * 0.051, 1.89, 0.15);
     features.add(eye);
     const finger = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.3, 7), dark);
     finger.position.set(side * 0.42, 0.7, 0.04);
