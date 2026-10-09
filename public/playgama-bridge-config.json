@@ -1,0 +1,32 @@
+{
+  "advertisement": {
+    "minimumDelayBetweenInterstitial": 60,
+    "interstitial": {
+      "preloadOnStart": "game_start",
+      "placementFallback": "game_start",
+      "placements": [
+        {
+          "id": "game_start"
+        },
+        {
+          "id": "day_1_complete"
+        },
+        {
+          "id": "day_2_complete"
+        },
+        {
+          "id": "day_3_complete"
+        }
+      ]
+    },
+    "rewarded": {
+      "preloadOnStart": "objective_hint",
+      "placementFallback": "objective_hint",
+      "placements": [
+        {
+          "id": "objective_hint"
+        }
+      ]
+    }
+  }
+}

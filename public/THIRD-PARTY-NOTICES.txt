@@ -1,0 +1,5 @@
+Playgama Bridge SDK 2.3.1
+Copyright Playgama
+License: GNU Lesser General Public License, version 3 or later
+License text: PLAYGAMA-BRIDGE-LICENSE.txt
+Source: https://github.com/Playgama/bridge

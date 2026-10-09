@@ -11,8 +11,9 @@ Build a genuine, polished browser 3D/2.5D horror game—not a text adventure, vi
 ## Scope and boundaries
 
 - Episode 1 is the complete current target. Do not implement Episode 2.
-- No backend, accounts, database, multiplayer, analytics, tracking, ads, or monetization.
-- Use local browser storage for simple, versioned checkpoint/save state.
+- No custom backend, accounts, database, multiplayer, analytics, or tracking.
+- Use Playgama Bridge storage for platform saves and local browser storage only as a fallback outside Bridge-supported platforms.
+- Use Playgama Bridge ads at natural story breaks; never interrupt active gameplay or cinematics.
 - Prefer a small dependency set and static-host-compatible paths.
 - Use properly licensed assets and document sources/limitations. Never represent placeholders as finished final art.
 - Keep `DEVELOPMENT_STATUS.md` accurate after each phase so work can resume safely.

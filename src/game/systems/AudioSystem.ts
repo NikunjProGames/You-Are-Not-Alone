@@ -4,6 +4,8 @@ export class AudioSystem {
   private ambience: GainNode | null = null;
   private started = false;
   private ambienceLevel = 0.045;
+  private platformAudioEnabled = true;
+  private platformPaused = false;
 
   async start(): Promise<void> {
     if (this.started) {
@@ -32,7 +34,7 @@ export class AudioSystem {
       noiseSamples[index] = (((seed ^ (seed >>> 14)) >>> 0) / 2147483648 - 1) * 0.12;
     }
 
-    master.gain.value = 0.34;
+    master.gain.value = this.isPlatformAudioActive() ? 0.34 : 0;
     ambience.gain.value = this.ambienceLevel;
     drone.type = "sine";
     drone.frequency.value = 43;
@@ -77,6 +79,18 @@ export class AudioSystem {
     this.master = master;
     this.ambience = ambience;
     this.started = true;
+  }
+
+  setPlatformState(audioEnabled: boolean, paused: boolean): void {
+    this.platformAudioEnabled = audioEnabled;
+    this.platformPaused = paused;
+    if (!this.context || !this.master) return;
+    const targetVolume = this.isPlatformAudioActive() ? 0.34 : 0;
+    this.master.gain.setTargetAtTime(targetVolume, this.context.currentTime, 0.03);
+  }
+
+  private isPlatformAudioActive(): boolean {
+    return this.platformAudioEnabled && !this.platformPaused;
   }
 
   setAmbience(amount: number, duration = 1.4): void {

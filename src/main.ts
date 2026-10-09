@@ -9,4 +9,4 @@ if (!canvas) {
 }
 
 const game = new Game(canvas);
-game.start();
+void game.initializePlatform().then(() => game.start());

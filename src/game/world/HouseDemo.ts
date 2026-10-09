@@ -41,6 +41,7 @@ export function buildHouseDemo(
   onStoryInteraction: (id: string) => void,
   canOpenFinalDoor: () => boolean,
   isFrontDoorwayOccupied: () => boolean,
+  getPlayerPosition: () => THREE.Vector3,
 ): HouseDemo {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#111a20");
@@ -264,32 +265,62 @@ export function buildHouseDemo(
   let finaleFlicker = false;
   let finaleElapsed = 0;
 
+  const playerInBounds = (minX: number, maxX: number, minZ: number, maxZ: number): boolean => {
+    const { x, z } = getPlayerPosition();
+    return x > minX && x < maxX && z > minZ && z < maxZ;
+  };
   const door = makeDoor(scene, wood, brass, onDoorChange, isDoorwayOccupied);
   const backRoomDoor = makePassageDoor(
     scene,
     wood,
     brass,
     (open) => window.dispatchEvent(new CustomEvent("game:back-room-door", { detail: open })),
-    isBackDoorwayOccupied,
+    () =>
+      isBackDoorwayOccupied() ||
+      playerInBounds(-3.95, 3.95, -20, -12.25) ||
+      playerInBounds(-1.13, 1.13, -12.52, -12.05),
   );
   const bedroomExitDoor = makePassageDoor(
     scene,
     wood,
     brass,
     (open) => window.dispatchEvent(new CustomEvent("game:bedroom-exit-door", { detail: open })),
-    () => false,
+    () =>
+      playerInBounds(-1.9, 1.9, -26, -20.25) ||
+      playerInBounds(-1.1, 1.1, -20.35, -19.95),
     -20.17,
   );
-  const protagonistRoomDoor = makeSideDoor(scene, wood, brass, -2.15, -2.55, -1, 3.16);
+  const protagonistRoomDoor = makeSideDoor(
+    scene,
+    wood,
+    brass,
+    -2.15,
+    -2.55,
+    -1,
+    3.16,
+    () =>
+      playerInBounds(-5.72, -1.9, -4.72, -0.24) ||
+      playerInBounds(-2.55, -1.85, -3.75, -1.35),
+  );
   const finalDoor = makeFinalDoor(scene, wood, brass, canOpenFinalDoor, onStoryInteraction, -20.2, 3.16);
   const entryDoor = makePassageDoor(scene, wood, brass, (open) => {
     if (open) onStoryInteraction("entry-door-opened");
   }, isFrontDoorwayOccupied, 6);
 
-  const westDoor = makeSideDoor(scene, wood, brass, -2.15, -8.6, -1);
-  const eastDoor = makeSideDoor(scene, wood, brass, 2.15, -8.6, 1);
-  const westStoreDoor = makeSideDoor(scene, wood, brass, -7.35, -8.6, -1);
-  const tenantStudyDoor = makeSideDoor(scene, wood, brass, 7.35, -8.6, 1);
+  const westDoor = makeSideDoor(scene, wood, brass, -2.15, -8.6, -1, 0, () =>
+    playerInBounds(-7.2, -1.75, -11.65, -5.55) ||
+    playerInBounds(-12.45, -7.0, -11.55, -5.65),
+  );
+  const eastDoor = makeSideDoor(scene, wood, brass, 2.15, -8.6, 1, 0, () =>
+    playerInBounds(1.75, 7.2, -11.65, -5.55) ||
+    playerInBounds(7.0, 12.45, -11.55, -5.65),
+  );
+  const westStoreDoor = makeSideDoor(scene, wood, brass, -7.35, -8.6, -1, 0, () =>
+    playerInBounds(-12.45, -7.0, -11.55, -5.65),
+  );
+  const tenantStudyDoor = makeSideDoor(scene, wood, brass, 7.35, -8.6, 1, 0, () =>
+    playerInBounds(7.0, 12.45, -11.55, -5.65),
+  );
   interactables.push({
     id: "foundation-door",
     prompt: () =>
@@ -304,19 +335,51 @@ export function buildHouseDemo(
     },
   });
   interactables.push(
-    makeDoorInteractable("foundation-west-door", "Open the laundry door", westDoor),
-    makeDoorInteractable("foundation-east-door", "Open the tenant's door", eastDoor),
-    makeDoorInteractable("foundation-bedroom-exit", "Open the bedroom door", bedroomExitDoor),
-    makeDoorInteractable("episode-protagonist-bedroom-door", "Open your bedroom door", protagonistRoomDoor),
+    makeDoorInteractable(
+      "foundation-west-door",
+      () => westDoor.isOpen
+        ? westDoor.canClose() ? "Close the laundry door" : "Step into the hall before closing"
+        : "Open the laundry door",
+      westDoor,
+    ),
+    makeDoorInteractable(
+      "foundation-east-door",
+      () => eastDoor.isOpen
+        ? eastDoor.canClose() ? "Close the tenant's door" : "Step into the hall before closing"
+        : "Open the tenant's door",
+      eastDoor,
+    ),
+    makeDoorInteractable(
+      "foundation-bedroom-exit",
+      () => bedroomExitDoor.isOpen
+        ? bedroomExitDoor.canClose() ? "Close the bedroom door" : "Step into the hall before closing"
+        : "Open the bedroom door",
+      bedroomExitDoor,
+    ),
+    makeDoorInteractable(
+      "episode-protagonist-bedroom-door",
+      () => protagonistRoomDoor.isOpen
+        ? protagonistRoomDoor.canClose() ? "Close your bedroom door" : "Step into the hall before closing"
+        : "Open your bedroom door",
+      protagonistRoomDoor,
+    ),
   );
   const westStoreInteractable = makeDoorInteractable(
     "episode-west-store-door",
-    () => storyDoors.westStore ? "Open the storage-room door" : "The storage door is locked",
+    () => !storyDoors.westStore
+      ? "The storage door is locked"
+      : westStoreDoor.isOpen
+        ? westStoreDoor.canClose() ? "Close the storage-room door" : "Step into the laundry room before closing"
+        : "Open the storage-room door",
     westStoreDoor,
   );
   const tenantStudyInteractable = makeDoorInteractable(
     "episode-tenant-study-door",
-    () => storyDoors.tenantStudy ? "Open the tenant's study door" : "The study door is locked",
+    () => !storyDoors.tenantStudy
+      ? "The study door is locked"
+      : tenantStudyDoor.isOpen
+        ? tenantStudyDoor.canClose() ? "Close the tenant's study door" : "Step into the hall before closing"
+        : "Open the tenant's study door",
     tenantStudyDoor,
   );
   westStoreInteractable.enabled = () => storyDoors.westStore;
@@ -331,20 +394,20 @@ export function buildHouseDemo(
   addEpisodeProps(scene, interactables, onStoryInteraction, storyPropObjects, [
     { id: "bills", position: [-0.42, 0.61, 0.12], color: "#b8aa8f", size: [0.42, 0.018, 0.3] },
     { id: "fire-photo", position: [-5.53, 1.1, -1.78], color: "#6b6050", size: [0.08, 0.48, 0.38] },
-    { id: "laundry-blood", position: [-4.9, 0.08, -6.2], color: "#664b42", size: [0.25, 0.06, 0.28] },
-    { id: "loose-valve", position: [-5.9, 0.72, -7.55], color: "#87908a", size: [0.18, 0.18, 0.18] },
-    { id: "strange-person-key", position: [-9.45, 0.94, -9.45], color: "#a17a45", size: [0.24, 0.035, 0.12] },
+    { id: "laundry-blood", position: [-4.9, 0, -6.2], color: "#664b42", size: [0.25, 0.06, 0.28] },
+    { id: "loose-valve", position: [-5.9, 0.72, -7.55], color: "#87908a", size: [0.08, 0.08, 0.08] },
+    { id: "strange-person-key", position: [-9.45, 0.96, -9.45], color: "#a17a45", size: [0.24, 0.035, 0.12] },
     { id: "tenant-ledger", position: [5.1, 1.0, -10.6], color: "#62574b", size: [0.36, 0.045, 0.26] },
     { id: "lease-copy", position: [5.9, 1.04, -10.75], color: "#b9ad98", size: [0.3, 0.018, 0.22] },
     { id: "tenant-audio", position: [9.55, 1.1, -10.45], color: "#292d2d", size: [0.32, 0.18, 0.12] },
     { id: "sealed-note", position: [11.35, 0.98, -7.0], color: "#b8aa8f", size: [0.21, 0.025, 0.15] },
     { id: "mirror-mark", position: [3.82, 2.0, -17.8], color: "#6f8180", size: [0.05, 0.6, 0.36] },
-    { id: "housemate-letter", position: [-10.55, 1.75, -10.55], color: "#b8aa8f", size: [0.24, 0.018, 0.18] },
-    { id: "wet-footprints", position: [0.9, 0.045, -6.8], color: "#332f2c", size: [0.14, 0.012, 0.3] },
+    { id: "housemate-letter", position: [-10.55, 1.73, -11.05], color: "#b8aa8f", size: [0.24, 0.018, 0.18] },
+    { id: "wet-footprints", position: [0.9, -0.024, -6.8], color: "#332f2c", size: [0.14, 0.012, 0.3] },
     { id: "burned-key", position: [-1.6, 0.8, -17.2], color: "#786247", size: [0.18, 0.03, 0.06] },
     { id: "friend-token", position: [-1.7, 0.76, -24.0], color: "#99845f", size: [0.13, 0.045, 0.13] },
     { id: "rest", position: [-4.15, 4.07, -2.9], color: "#b9ad98", size: [0.18, 0.025, 0.12] },
-    { id: "stone", position: [1.15, 0.13, 12.5], color: "#77736c", size: [0.34, 0.22, 0.28] },
+    { id: "stone", position: [1.15, 0.08, 12.5], color: "#77736c", size: [0.34, 0.22, 0.28] },
   ]);
   interactables.push({
     id: "foundation-back-room-door",
@@ -353,7 +416,7 @@ export function buildHouseDemo(
         ? "Open the bedroom door"
         : backRoomDoor.canClose()
           ? "Close the bedroom door"
-          : "Step clear to close the bedroom door",
+          : "Step out before closing the bedroom door",
     object: backRoomDoor.panel,
     interact: backRoomDoor.toggle,
   });
@@ -388,8 +451,12 @@ export function buildHouseDemo(
   }
   const upperEntryDoor = makeCustomPassageDoor(scene, wood, brass, 0.08, 3.16);
   upperEntryDoor.setOpen(true);
-  const arenRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16);
-  const upstairsTenantDoor = makeSideDoor(scene, wood, brass, 2.15, -15.55, 1, 3.16);
+  const arenRoomDoor = makeSideDoor(scene, wood, brass, 2.15, -2.55, 1, 3.16, () =>
+    playerInBounds(1.85, 5.72, -4.72, -0.24),
+  );
+  const upstairsTenantDoor = makeSideDoor(scene, wood, brass, 2.15, -15.55, 1, 3.16, () =>
+    playerInBounds(1.9, 4.12, -20.18, -12.25),
+  );
   interactables.push(
     makeDoorInteractable(
       "episode-upper-corridor-door",
@@ -405,7 +472,11 @@ export function buildHouseDemo(
     },
     makeDoorInteractable(
       "episode-upstairs-tenant-room",
-      () => upstairsTenantDoor.isOpen ? "Close the tenant's upstairs door" : "Open the tenant's upstairs door",
+      () => upstairsTenantDoor.isOpen
+        ? upstairsTenantDoor.canClose()
+          ? "Close the tenant's upstairs door"
+          : "Step into the corridor before closing"
+        : "Open the tenant's upstairs door",
       upstairsTenantDoor,
     ),
   );
@@ -826,6 +897,13 @@ function addExterior(
   const lawn = new THREE.MeshStandardMaterial({ color: "#37423a", roughness: 1 });
   const path = new THREE.MeshStandardMaterial({ color: "#71685b", roughness: 0.98 });
   const leaves = new THREE.MeshStandardMaterial({ color: "#455640", roughness: 1 });
+  const asphalt = new THREE.MeshStandardMaterial({ color: "#292e30", roughness: 0.94 });
+  const roadMarking = new THREE.MeshStandardMaterial({
+    color: "#a99c78",
+    emissive: "#403b2f",
+    emissiveIntensity: 0.12,
+    roughness: 0.9,
+  });
   addBox(scene, lawn, 20, 0.16, 12, 0, -0.18, 11.7, false);
   const terrainGeometry = new THREE.PlaneGeometry(110, 116, 34, 36);
   const terrainPositions = terrainGeometry.attributes.position;
@@ -843,6 +921,39 @@ function addExterior(
   terrain.position.set(0, -0.29, 16);
   terrain.receiveShadow = true;
   scene.add(terrain);
+  addBox(scene, path, 112, 0.1, 9, 0, -0.205, 26.5, false);
+  addBox(scene, asphalt, 112, 0.07, 6.2, 0, -0.13, 26.5, false);
+  for (let x = -52; x <= 52; x += 8) {
+    addBox(scene, roadMarking, 3.4, 0.012, 0.1, x, -0.092, 26.5, false);
+  }
+  for (const z of [23.55, 29.45]) {
+    addBox(scene, roadMarking, 112, 0.012, 0.075, 0, -0.092, z, false);
+  }
+  const streetMetal = new THREE.MeshStandardMaterial({
+    color: "#333638",
+    metalness: 0.55,
+    roughness: 0.55,
+  });
+  const streetGlow = new THREE.MeshStandardMaterial({
+    color: "#f2d4a4",
+    emissive: "#d89a50",
+    emissiveIntensity: 1.5,
+    roughness: 0.38,
+  });
+  for (const x of [-13, 13]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.09, 5.9, 8), streetMetal);
+    pole.position.set(x, 2.75, 22.4);
+    scene.add(pole);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.9, 8), streetMetal);
+    arm.position.set(x + Math.sign(x) * 0.36, 5.62, 22.4);
+    arm.rotation.z = Math.sign(x) * Math.PI / 2;
+    scene.add(arm);
+    addBox(scene, streetMetal, 0.58, 0.14, 0.48, x + Math.sign(x) * 0.7, 5.58, 22.4, false);
+    addBox(scene, streetGlow, 0.42, 0.035, 0.33, x + Math.sign(x) * 0.7, 5.49, 22.4, false);
+    const streetLight = new THREE.PointLight("#e4bd88", 15, 24, 2);
+    streetLight.position.set(x + Math.sign(x) * 0.7, 5.3, 22.4);
+    scene.add(streetLight);
+  }
   addBox(scene, path, 2.35, 0.06, 7.8, 0, -0.06, 9.85, false);
   addBox(scene, wood, 6.2, 0.2, 1.9, 0, -0.08, 6.95, true);
   for (const side of [-1, 1]) {
@@ -931,7 +1042,7 @@ function addExterior(
   for (let index = 0; index < 31; index += 1) {
     treeLocations.push({
       x: -45 + index * 3 + (random() - 0.5) * 3,
-      z: 23 + random() * 34,
+      z: 34 + random() * 27,
       height: 6.5 + random() * 5,
       scale: 0.78 + random() * 0.68,
     });
@@ -1139,28 +1250,56 @@ function addLivingRoom(
     brass: THREE.Material,
     obstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }>,
   ): void {
-    addBox(scene, darkWood, 1.8, 1.7, 0.55, -10.55, 0.85, -10.55, true);
-    for (let index = 0; index < 3; index += 1) {
-      addBox(scene, cream, 0.35, 0.36, 0.3, -10.88 + index * 0.36, 1.35, -10.23, false);
+    addBox(scene, wood, 0.12, 1.72, 0.48, -11.35, 0.86, -11.16, true);
+    addBox(scene, wood, 0.12, 1.72, 0.48, -9.75, 0.86, -11.16, true);
+    for (const y of [0.24, 0.74, 1.24, 1.68]) {
+      addBox(scene, wood, 1.72, 0.08, 0.52, -10.55, y, -11.16, true);
     }
-    addBox(scene, wood, 1.6, 0.09, 0.65, -9.9, 0.95, -6.05, true);
-    addBox(scene, brass, 0.16, 0.025, 0.12, -9.3, 1.01, -6.05, false);
+    for (const [x, y, width, height, color] of [
+      [-11.04, 0.43, 0.43, 0.3, "#8c785e"],
+      [-10.32, 0.43, 0.43, 0.3, "#77796a"],
+      [-10.75, 0.93, 0.72, 0.32, "#75634f"],
+      [-11.02, 1.43, 0.5, 0.3, "#77796a"],
+      [-10.32, 1.43, 0.4, 0.3, "#8c785e"],
+    ] as const) {
+      addBox(
+        scene,
+        new THREE.MeshStandardMaterial({ color, roughness: 0.95 }),
+        width,
+        height,
+        0.34,
+        x,
+        y,
+        -11.13,
+        false,
+      );
+    }
+    addBox(scene, wood, 1.3, 0.12, 0.78, -9.45, 0.88, -9.45, true);
+    for (const [x, z] of [[-9.98, -9.74], [-8.92, -9.74], [-9.98, -9.16], [-8.92, -9.16]]) {
+      addBox(scene, wood, 0.08, 0.82, 0.08, x, 0.41, z, false);
+    }
     addBox(scene, wood, 0.035, 0.82, 0.035, -5.95, 0.42, -7.58, false);
     addBox(scene, brass, 0.34, 0.07, 0.07, -5.78, 0.69, -7.58, false);
-    addBox(scene, cream, 0.78, 0.9, 0.7, -3.45, 0.45, -10.55, true);
+    const valveWheel = new THREE.Mesh(
+      new THREE.TorusGeometry(0.13, 0.025, 8, 18),
+      brass,
+    );
+    valveWheel.position.set(-5.9, 0.72, -7.54);
+    scene.add(valveWheel);
+    addBox(scene, cream, 0.78, 0.9, 0.7, -3.45, 0.43, -10.55, true);
     const washerWindow = new THREE.Mesh(
       new THREE.CircleGeometry(0.23, 20),
       new THREE.MeshStandardMaterial({ color: "#414a49", metalness: 0.3, roughness: 0.45 }),
     );
     washerWindow.position.set(-3.45, 0.45, -10.19);
     scene.add(washerWindow);
-    addBox(scene, darkWood, 1.45, 0.82, 0.62, -5.65, 0.41, -10.55, true);
-    addBox(scene, cream, 1.55, 0.08, 0.69, -5.65, 0.86, -10.55, true);
+    addBox(scene, darkWood, 1.45, 0.82, 0.62, -5.65, 0.395, -10.55, true);
+    addBox(scene, cream, 1.55, 0.08, 0.69, -5.65, 0.84, -10.55, true);
 
-    addBox(scene, cream, 1.8, 0.54, 0.76, -10.65, 0.27, -6.65, true);
-    addBox(scene, cream, 1.92, 0.1, 0.86, -10.65, 0.58, -6.65, true);
-    addBox(scene, darkWood, 1.2, 0.82, 0.62, -5.95, 0.41, -6.45, true);
-    addBox(scene, cream, 1.27, 0.1, 0.7, -5.95, 0.87, -6.45, true);
+    addBox(scene, cream, 1.8, 0.54, 0.76, -10.65, 0.24, -6.65, true);
+    addBox(scene, cream, 1.92, 0.1, 0.86, -10.65, 0.56, -6.65, true);
+    addBox(scene, darkWood, 1.2, 0.82, 0.62, -5.95, 0.395, -6.45, true);
+    addBox(scene, cream, 1.27, 0.1, 0.7, -5.95, 0.84, -6.45, true);
     const basin = new THREE.Mesh(
       new THREE.CylinderGeometry(0.22, 0.28, 0.18, 18),
       cream,
@@ -1199,12 +1338,14 @@ function addLivingRoom(
       { minX: -11.7, maxX: -9.6, minZ: -7.15, maxZ: -6.15 },
       { minX: -6.7, maxX: -5.2, minZ: -6.95, maxZ: -5.95 },
       { minX: -3.38, maxX: -2.65, minZ: -6.68, maxZ: -5.96 },
+      { minX: -11.55, maxX: -9.55, minZ: -11.55, maxZ: -10.25 },
+      { minX: -10.18, maxX: -8.72, minZ: -9.98, maxZ: -8.92 },
     );
     const broomHandle = new THREE.Mesh(
       new THREE.CylinderGeometry(0.025, 0.035, 1.18, 8),
       new THREE.MeshStandardMaterial({ color: "#785b3d", roughness: 0.95 }),
     );
-    broomHandle.position.set(-6.35, 0.62, -6.05);
+    broomHandle.position.set(-6.35, 0.57, -6.05);
     broomHandle.rotation.z = -0.14;
     scene.add(broomHandle);
     addBox(
@@ -1214,10 +1355,27 @@ function addLivingRoom(
       0.14,
       0.1,
       -6.42,
-      0.08,
+      0.04,
       -6.05,
       false,
     );
+    addBox(scene, wood, 0.7, 0.08, 0.52, -3.12, 0.76, -9.25, true);
+    for (const [x, z] of [[-3.4, -9.45], [-2.84, -9.45], [-3.4, -9.05], [-2.84, -9.05]]) {
+      addBox(scene, wood, 0.07, 0.72, 0.07, x, 0.36, z, false);
+    }
+    addBox(
+      scene,
+      new THREE.MeshStandardMaterial({ color: "#59655f", roughness: 0.98 }),
+      0.52,
+      0.55,
+      0.42,
+      -3.12,
+      0.315,
+      -9.25,
+      true,
+    );
+    addBox(scene, cream, 0.54, 0.07, 0.44, -3.12, 0.625, -9.25, true);
+    obstacles.push({ minX: -3.58, maxX: -2.66, minZ: -9.65, maxZ: -8.85 });
   }
 
   function addTenantStudyDetails(
@@ -2273,6 +2431,7 @@ function makeSideDoor(
   z: number,
   side: number,
   floorHeight = 0,
+  isRoomOccupied: () => boolean = () => false,
 ): {
   panel: THREE.Object3D;
   isOpen: boolean;
@@ -2316,9 +2475,12 @@ function makeSideDoor(
   return {
     panel: hinge,
     get isOpen() { return isOpen; },
-    canClose: () => true,
+    canClose: () => !isRoomOccupied(),
     update,
-    toggle: () => setOpen(!isOpen),
+    toggle: () => {
+      if (isOpen && !isRoomOccupied()) setOpen(false);
+      else if (!isOpen) setOpen(true);
+    },
     setOpen,
   };
 }

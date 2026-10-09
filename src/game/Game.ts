@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import bridge from "@playgama/bridge";
 import type { Conversation, DayPhase, StorySnapshot } from "./types";
 import { EpisodeOne, type EpisodeEnding } from "./content/EpisodeOne";
 import { AudioSystem } from "./systems/AudioSystem";
@@ -18,6 +19,153 @@ const PHASE_LABEL: Record<DayPhase, string> = {
   afternoon: "AFTERNOON",
   evening: "EVENING",
   night: "NIGHT",
+};
+
+const OBJECTIVE_COPY: Record<string, { label: string; hint: string }> = {
+  "Listen to the opening, then settle into the house.": {
+    label: "Get settled.",
+    hint: "The move-in note near the entrance has details about the house.",
+  },
+  "Open the front door and check in with the tenant at reception.": {
+    label: "Check in at reception.",
+    hint: "The tenant is waiting just inside the front door.",
+  },
+  "Check in with the tenant at reception.": {
+    label: "Check in at reception.",
+    hint: "Look for the tenant in the front hall.",
+  },
+  "The stranger hurried inside. Ask the tenant who they are.": {
+    label: "Ask about the stranger.",
+    hint: "The tenant is near reception; ask who just came in.",
+  },
+  "Find Zayan in the dining area. Ask why the tenant treats him this way.": {
+    label: "Find Zayan in the dining room.",
+    hint: "Head through the central hall toward the dining table.",
+  },
+  "Ask the tenant who the person was, then return upstairs.": {
+    label: "Ask about Zayan, then rest.",
+    hint: "The tenant is near reception. Afterward, go upstairs and interact with your bed.",
+  },
+  "The laundry scene left a dark mark beneath the sink. Inspect it.": {
+    label: "Inspect the laundry stain.",
+    hint: "Look beneath the laundry sink, close to the floor.",
+  },
+  "Help the housemate check the laundry pipes and find where the stain came from.": {
+    label: "Trace the laundry leak.",
+    hint: "Check the exposed pipe behind the sink; the loose valve is mounted on it.",
+  },
+  "Turn the seized valve behind the laundry sink and stop the leak.": {
+    label: "Stop the laundry leak.",
+    hint: "The loose wheel on the pipe behind the sink is the shutoff.",
+  },
+  "Turn the seized valve behind the laundry sink.": {
+    label: "Stop the laundry leak.",
+    hint: "Look for the small valve wheel behind the laundry sink.",
+  },
+  "The tenant knew where you were headed. Search their records with Zayan.": {
+    label: "Search the tenant's study.",
+    hint: "The study is beyond the tenant's room; Zayan can help you compare the records.",
+  },
+  "Return to the laundry with Zayan and trace the leak beneath the sink.": {
+    label: "Return to the laundry with Zayan.",
+    hint: "The laundry is through the west-hand door off the central hall.",
+  },
+  "You and Zayan will confront the tenant tonight. Return upstairs and sleep before Sunday.": {
+    label: "Rest before Sunday.",
+    hint: "Go upstairs to your bedroom and interact with the bed.",
+  },
+  "Go upstairs to your room and rest after the journey.": {
+    label: "Rest in your room.",
+    hint: "Your bedroom is at the top of the stairs; interact with the bed.",
+  },
+  "Find Zayan in the laundry room and see what he was cleaning.": {
+    label: "Find Zayan in the laundry room.",
+    hint: "Follow the hall to the west-side laundry door.",
+  },
+  "Find Zayan in the laundry room.": {
+    label: "Find Zayan in the laundry room.",
+    hint: "Follow the hall to the west-side laundry door.",
+  },
+  "Ask Zayan about the mark beneath the laundry sink.": {
+    label: "Ask Zayan about the stain.",
+    hint: "Find Zayan in the dining area and ask what he knows about the mark.",
+  },
+  "Inspect the dark mark beneath the laundry sink.": {
+    label: "Inspect the laundry stain.",
+    hint: "The mark is beneath the sink; get close and interact with it.",
+  },
+  "Ask Zayan why he was cleaning the laundry-room stain.": {
+    label: "Ask Zayan about the stain.",
+    hint: "Find Zayan in the dining area and ask him about the mark.",
+  },
+  "Zayan trusts you now. Find the key he left in the storage room and compare what he says with the tenant's records.": {
+    label: "Find Zayan's key in storage.",
+    hint: "The storage room opens from the laundry. Look on the worktable, then compare the key's clue with the tenant's records.",
+  },
+  "Compare what you found with what Zayan and the tenant have told you.": {
+    label: "Compare the accounts.",
+    hint: "Review the key's clue, then speak with both Zayan and the tenant.",
+  },
+  "The note warns the tenant not to let Zayan take you downstairs. Ask Zayan what is below the house.": {
+    label: "Ask Zayan about downstairs.",
+    hint: "Find Zayan in the dining room; the note's warning is about a place beneath the house.",
+  },
+  "Talk to the tenant about the ledger and the recording.": {
+    label: "Confront the tenant with the evidence.",
+    hint: "The tenant is usually near reception. Bring up both the ledger and the recording.",
+  },
+  "The hallway warning does not explain the stain. Find out what Zayan was cleaning.": {
+    label: "Find out what Zayan cleaned.",
+    hint: "Return to the laundry and inspect the mark beneath the sink.",
+  },
+  "The dates in the ledger contradict the tenant. Find the recorder in the study.": {
+    label: "Find the recorder in the study.",
+    hint: "Check the tenant's study desk; the recorder is beside the repair records.",
+  },
+  "The tenant's account doesn't fit the evidence. Bring it to Zayan and decide what to do.": {
+    label: "Discuss the evidence with Zayan.",
+    hint: "Find Zayan in the dining room and talk through what you discovered.",
+  },
+  "Check the tenant's repair records with Zayan, then decide what the evidence means.": {
+    label: "Check the tenant's records.",
+    hint: "The repair ledger is in the tenant's room; search it with Zayan before deciding what it proves.",
+  },
+  "Speak with Zayan about what you witnessed before confronting the tenant.": {
+    label: "Talk to Zayan first.",
+    hint: "Find Zayan in the dining area and ask about what you saw.",
+  },
+  "Return upstairs and rest. You and Zayan will talk after you see how the tenant treats him.": {
+    label: "Rest before confronting the tenant.",
+    hint: "Go upstairs to your bedroom and interact with the bed.",
+  },
+  "Enter the house. Someone is waiting near the front hall.": {
+    label: "Go inside.",
+    hint: "Open the front door and look for the person waiting in the hall.",
+  },
+  "Go through the hall. The tenant's voice is raised.": {
+    label: "Find the tenant and Zayan.",
+    hint: "Follow the raised voices through the hall to the dining area.",
+  },
+  "Try Zayan's upstairs door.": {
+    label: "Check Zayan's door.",
+    hint: "Go upstairs and knock on the closed door at the end of the corridor.",
+  },
+  "Enter Zayan's room and check inside.": {
+    label: "Check inside Zayan's room.",
+    hint: "The latch has released. Open the door and look inside.",
+  },
+  "Carry the stone upstairs to the door the tenant forbade you to open.": {
+    label: "Take the stone to the forbidden door.",
+    hint: "Carry the stone from the garden upstairs to the locked door at the end of the corridor.",
+  },
+  "Find something heavy in the garden, then return upstairs to the forbidden room.": {
+    label: "Find a stone in the garden.",
+    hint: "Look near the garden fence for a loose stone, then take it upstairs.",
+  },
+  "The tenant is here. The room feels familiar in a way you cannot explain.": {
+    label: "Face the tenant.",
+    hint: "Look toward the tenant and listen.",
+  },
 };
 
 export class Game {
@@ -40,6 +188,7 @@ export class Game {
   private readonly inspectionPanel = required<HTMLElement>("#inspection-panel");
   private readonly dayLabel = required<HTMLElement>("#day-label");
   private readonly objectiveText = required<HTMLElement>("#objective-text");
+  private readonly hintButton = required<HTMLButtonElement>("#hint-button");
   private readonly objectiveDirection = required<HTMLElement>("#objective-direction");
   private readonly objectiveDirectionArrow = required<HTMLElement>("#objective-direction-arrow");
   private readonly toast = required<HTMLElement>("#toast");
@@ -69,6 +218,7 @@ export class Game {
   private elapsed = 0;
   private lastFrame = 0;
   private objectiveTarget: THREE.Vector3 | null = null;
+  private currentHint = "Follow the objective marker and look for objects with an interaction prompt.";
   private readonly objectiveToTarget = new THREE.Vector3();
   private readonly objectiveForward = new THREE.Vector3();
   private pixelRatio = 0;
@@ -79,6 +229,13 @@ export class Game {
   private qualityRecoveryElapsed = 0;
   private mobileQuality = window.matchMedia("(pointer: coarse)").matches;
   private adaptiveShadowsDisabled = false;
+  private platformInitialized = false;
+  private platformPaused = false;
+  private advertisementPaused = false;
+  private platformAudioEnabled = true;
+  private readyMessageSent = false;
+  private rewardedHintPending = false;
+  private hintFeedbackTimeout = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -109,6 +266,7 @@ export class Game {
       (id) => this.episode?.interact(id),
       () => this.story.hasFlag("episode.rescueReady") && this.story.hasFlag("episode.stoneFound"),
       () => Math.abs(this.player.position.x) < 1.3 && Math.abs(this.player.position.z - 6) < 0.6,
+      () => this.player.position,
     );
     window.addEventListener("game:door-sound", () => this.audio.playDoorSound());
     window.addEventListener("game:back-room-door", (event) => {
@@ -135,6 +293,7 @@ export class Game {
       showToast: (message) => this.showToast(message),
       saveCheckpoint: () => this.saveCheckpoint(false),
       transition: (message, title) => this.showTravelTransition(message, title),
+      showInterstitial: (placement) => this.showInterstitial(placement),
       showEnding: (ending) => this.showEnding(ending),
     });
     this.setupUi();
@@ -147,6 +306,57 @@ export class Game {
     window.addEventListener("game:inspect", (event) => this.openInspection(event as CustomEvent));
     window.addEventListener("game:dialogue", (event) => this.openDialogue(event as CustomEvent));
     this.story.subscribe((snapshot) => this.renderStory(snapshot));
+  }
+
+  async initializePlatform(): Promise<void> {
+    try {
+      await bridge.initialize();
+      document.documentElement.dataset.platformLanguage = bridge.platform.language;
+      this.platformAudioEnabled = bridge.platform.isAudioEnabled;
+      this.platformPaused = bridge.platform.isPaused;
+      bridge.platform.on(bridge.EVENT_NAME.AUDIO_STATE_CHANGED, (enabled: boolean) => {
+        this.platformAudioEnabled = enabled;
+        this.audio.setPlatformState(
+          this.platformAudioEnabled,
+          this.platformPaused || this.advertisementPaused,
+        );
+      });
+      bridge.platform.on(bridge.EVENT_NAME.PAUSE_STATE_CHANGED, (paused: boolean) => {
+        this.platformPaused = paused;
+        this.audio.setPlatformState(
+          this.platformAudioEnabled,
+          this.platformPaused || this.advertisementPaused,
+        );
+        if (paused) {
+          this.player.releasePointerLock();
+          void this.saveCheckpoint(false);
+        }
+      });
+      await this.saves.initialize(bridge.platform.id === bridge.PLATFORM_ID.MOCK);
+      bridge.advertisement.on(
+        bridge.EVENT_NAME.REWARDED_STATE_CHANGED,
+        (state: string) => this.handleRewardedState(state),
+      );
+      bridge.advertisement.on(
+        bridge.EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
+        (state: string) => this.handleInterstitialState(state),
+      );
+      if (bridge.advertisement.isInterstitialSupported) {
+        bridge.advertisement.preloadInterstitial("game_start");
+      }
+      if (bridge.advertisement.isRewardedSupported) {
+        bridge.advertisement.preloadRewarded("objective_hint");
+      }
+      this.platformInitialized = true;
+    } catch (error) {
+      console.error("Unable to initialize Playgama Bridge; using local browser saves.", error);
+      await this.saves.initialize(true);
+    }
+    this.audio.setPlatformState(
+      this.platformAudioEnabled,
+      this.platformPaused || this.advertisementPaused,
+    );
+    this.updateHintButtonLabel();
   }
 
   private showTravelTransition(message: string, title?: string): void {
@@ -170,6 +380,7 @@ export class Game {
     this.startButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
       this.player.requestPointerLock();
+      this.showInterstitial("game_start");
       void this.beginNewGame();
     });
     this.continueButton.addEventListener("click", () => {
@@ -178,6 +389,7 @@ export class Game {
       void this.continueGame();
     });
     this.pauseButton.addEventListener("click", () => this.pause());
+    this.hintButton.addEventListener("click", () => this.requestHint());
     this.resumeButton.addEventListener("click", () => this.resume());
     this.saveButton.addEventListener("click", () => this.saveCheckpoint());
     this.inspectCloseButton.addEventListener("click", () => this.closeInspection());
@@ -210,9 +422,11 @@ export class Game {
     const delta = Math.min((now - this.lastFrame) / 1000, 0.05);
     this.lastFrame = now;
     this.updateRenderQuality(delta);
-    this.world.update(delta);
+    if (!this.platformPaused && !this.advertisementPaused) this.world.update(delta);
 
     if (
+      !this.platformPaused &&
+      !this.advertisementPaused &&
       this.isPlaying &&
       this.pauseScreen.hidden &&
       this.inspectionPanel.hidden &&
@@ -239,15 +453,21 @@ export class Game {
       this.characters.update(delta, this.elapsed);
     }
 
-    this.cinematics.update(delta);
-    this.episode.update(delta);
-    this.environment.update(delta, this.elapsed);
+    if (!this.platformPaused && !this.advertisementPaused) {
+      this.cinematics.update(delta);
+      this.episode.update(delta);
+      this.environment.update(delta, this.elapsed);
+    }
     this.renderer.render(this.world.scene, this.player.camera);
+    if (!this.readyMessageSent) {
+      this.readyMessageSent = true;
+      this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.GAME_READY);
+    }
     requestAnimationFrame(this.frame);
   };
 
   private async beginNewGame(): Promise<void> {
-    this.saves.clear();
+    await this.saves.clear();
     this.story.reset();
     this.events.reset();
     this.world.setDoorOpen(false);
@@ -311,9 +531,14 @@ export class Game {
       this.title.classList.remove("screen-leaving");
     }, 750);
     await this.audio.start();
+    this.audio.setPlatformState(
+      this.platformAudioEnabled,
+      this.platformPaused || this.advertisementPaused,
+    );
     this.audio.playUiClick();
     this.player.focusCanvas();
-    this.saveCheckpoint(false);
+    this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_STARTED);
+    void this.saveCheckpoint(false);
   }
 
   private setupUi(): void {
@@ -374,7 +599,8 @@ export class Game {
     this.player.releasePointerLock();
     this.interactions.clearFocus();
     this.objectiveDirection.hidden = true;
-    this.saveCheckpoint(false);
+    this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_PAUSED);
+    void this.saveCheckpoint(false);
   }
 
   private resume(): void {
@@ -382,6 +608,7 @@ export class Game {
     this.player.setLookEnabled(true);
     this.player.focusCanvas();
     this.player.requestPointerLock();
+    this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_RESUMED);
   }
 
   private handleEscape(): void {
@@ -400,10 +627,10 @@ export class Game {
     );
   }
 
-  private saveCheckpoint(showFeedback = true): void {
+  private async saveCheckpoint(showFeedback = true): Promise<void> {
     if (!this.isPlaying) return;
     this.story.checkpoint(this.player);
-    const succeeded = this.saves.save(this.story.value);
+    const succeeded = await this.saves.save(this.story.value);
     this.autosaveTime = 0;
     if (showFeedback || !succeeded) {
       this.showToast(succeeded ? "Checkpoint saved." : "Checkpoint could not be saved.");
@@ -415,14 +642,136 @@ export class Game {
   }
 
   private setObjective(text: string, destination?: THREE.Vector3): void {
-    this.objectiveText.textContent = text;
-    this.screenReaderStatus.textContent = `New objective: ${text}`;
+    const copy = OBJECTIVE_COPY[text];
+    const label = copy?.label ?? text;
+    this.currentHint = copy?.hint ?? "Look for nearby objects you can inspect or interact with.";
+    this.objectiveText.textContent = label;
+    this.screenReaderStatus.textContent = `New objective: ${label}`;
     this.story.setFlag("episode.objective", text);
     this.objectiveTarget = destination?.clone() ?? null;
     this.story.setFlag(
       "episode.objectiveTarget",
       destination ? `${destination.x},${destination.y},${destination.z}` : "",
     );
+  }
+
+  private updateHintButtonLabel(): void {
+    const rewardedAvailable =
+      this.platformInitialized && bridge.advertisement.isRewardedSupported;
+    this.hintButton.textContent = rewardedAvailable ? "WATCH AD · GET HINT" : "SHOW HINT";
+    this.hintButton.setAttribute(
+      "aria-label",
+      rewardedAvailable ? "Watch an ad to reveal a hint" : "Show a free hint",
+    );
+  }
+
+  private requestHint(): void {
+    if (!this.canInteract()) return;
+    if (!this.platformInitialized || !bridge.advertisement.isRewardedSupported) {
+      this.revealHint(true);
+      return;
+    }
+
+    this.rewardedHintPending = true;
+    this.hintButton.disabled = true;
+    this.hintButton.textContent = "LOADING AD…";
+    try {
+      bridge.advertisement.showRewarded("objective_hint");
+    } catch (error) {
+      console.error("Unable to show the rewarded hint ad.", error);
+      this.rewardedHintPending = false;
+      this.updateHintButtonLabel();
+      this.revealHint(true);
+    }
+  }
+
+  private handleRewardedState(state: string): void {
+    if (state === bridge.REWARDED_STATE.OPENED) this.setAdvertisementPaused(true);
+    if (
+      state === bridge.REWARDED_STATE.CLOSED ||
+      state === bridge.REWARDED_STATE.FAILED
+    ) {
+      this.setAdvertisementPaused(false);
+    }
+    if (!this.rewardedHintPending) return;
+    if (state === bridge.REWARDED_STATE.REWARDED) {
+      this.rewardedHintPending = false;
+      this.hintButton.disabled = false;
+      this.updateHintButtonLabel();
+      this.revealHint(false);
+    } else if (state === bridge.REWARDED_STATE.FAILED) {
+      this.rewardedHintPending = false;
+      this.hintButton.disabled = false;
+      this.updateHintButtonLabel();
+      this.revealHint(true);
+    } else if (state === bridge.REWARDED_STATE.CLOSED) {
+      this.rewardedHintPending = false;
+      this.hintButton.disabled = false;
+      this.updateHintButtonLabel();
+      this.showToast("Watch the full ad to reveal a hint.");
+    }
+  }
+
+  private handleInterstitialState(state: string): void {
+    if (state === bridge.INTERSTITIAL_STATE.OPENED) this.setAdvertisementPaused(true);
+    if (
+      state === bridge.INTERSTITIAL_STATE.CLOSED ||
+      state === bridge.INTERSTITIAL_STATE.FAILED
+    ) {
+      this.setAdvertisementPaused(false);
+    }
+  }
+
+  private setAdvertisementPaused(paused: boolean): void {
+    if (this.advertisementPaused === paused) return;
+    this.advertisementPaused = paused;
+    this.audio.setPlatformState(
+      this.platformAudioEnabled,
+      this.platformPaused || this.advertisementPaused,
+    );
+    if (paused) {
+      this.player.setLookEnabled(false);
+      this.player.releasePointerLock();
+      if (this.isPlaying) {
+        this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_PAUSED);
+        void this.saveCheckpoint(false);
+      }
+      return;
+    }
+    if (this.isPlaying && !this.platformPaused && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
+      this.player.setLookEnabled(true);
+      this.player.focusCanvas();
+      this.player.requestPointerLock();
+      this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_RESUMED);
+    }
+  }
+
+  private revealHint(isFreeFallback: boolean): void {
+    if (!this.currentHint) {
+      this.showToast("There is no new objective to hint at yet.");
+      return;
+    }
+    this.showToast(
+      isFreeFallback
+        ? `No ad is available. Free hint: ${this.currentHint}`
+        : `Hint: ${this.currentHint}`,
+    );
+    this.objectiveDirection.classList.remove("hint-highlight");
+    void this.objectiveDirection.offsetWidth;
+    this.objectiveDirection.classList.add("hint-highlight");
+    window.clearTimeout(this.hintFeedbackTimeout);
+    this.hintFeedbackTimeout = window.setTimeout(() => {
+      this.objectiveDirection.classList.remove("hint-highlight");
+    }, 4200);
+  }
+
+  private showInterstitial(placement: string): void {
+    if (!this.platformInitialized || !bridge.advertisement.isInterstitialSupported) return;
+    try {
+      bridge.advertisement.showInterstitial(placement);
+    } catch (error) {
+      console.error(`Unable to show interstitial ad at "${placement}".`, error);
+    }
   }
 
   private updateObjectiveDirection(): void {
@@ -466,6 +815,14 @@ export class Game {
     this.player.releasePointerLock();
     this.interactions.clearFocus();
     this.hud.hidden = true;
+    this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_COMPLETED);
+  }
+
+  private sendPlatformMessage(message: string): void {
+    if (!this.platformInitialized) return;
+    void bridge.platform.sendMessage(message).catch((error: unknown) => {
+      console.error(`Unable to send Playgama platform message "${message}".`, error);
+    });
   }
 
   private showToast(text: string): void {
