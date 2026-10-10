@@ -311,7 +311,10 @@ export class Game {
   async initializePlatform(): Promise<void> {
     try {
       await bridge.initialize();
-      document.documentElement.dataset.platformLanguage = bridge.platform.language;
+      const platformLanguage = bridge.platform.language;
+      const languageCode = platformLanguage.toLowerCase().split(/[-_]/)[0];
+      document.documentElement.dataset.platformLanguage = platformLanguage;
+      document.documentElement.lang = languageCode === "en" ? platformLanguage : "en";
       this.platformAudioEnabled = bridge.platform.isAudioEnabled;
       this.platformPaused = bridge.platform.isPaused;
       bridge.platform.on(bridge.EVENT_NAME.AUDIO_STATE_CHANGED, (enabled: boolean) => {
@@ -459,7 +462,7 @@ export class Game {
       this.environment.update(delta, this.elapsed);
     }
     this.renderer.render(this.world.scene, this.player.camera);
-    if (!this.readyMessageSent) {
+    if (this.platformInitialized && !this.readyMessageSent) {
       this.readyMessageSent = true;
       this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.GAME_READY);
     }
