@@ -520,6 +520,11 @@ kbd {
   backdrop-filter: blur(6px);
 }
 
+.hud.is-cinematic-active .objective-card,
+.hud.is-dialogue-active .objective-card {
+  visibility: hidden;
+}
+
 .objective-card .eyebrow {
   margin-bottom: 10px;
   font-size: 9px;

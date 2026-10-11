@@ -1252,6 +1252,7 @@ export class EpisodeOne {
     this.options.setObjective("The tenant is here. The room feels familiar in a way you cannot explain.");
     characters.place("tenant", new THREE.Vector3(2, 3.16, -26.35), Math.PI);
     const monster = world.entity.position.clone().add(new THREE.Vector3(0, 1.1, 0));
+    const mobileFraming = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
     cinematics.play(
       player.camera,
       [{
@@ -1274,15 +1275,23 @@ export class EpisodeOne {
               [
                 {
                   duration: 3.4,
-                  position: new THREE.Vector3(-2.25, 5.12, -23.55),
-                  lookAt: monster,
-                  fov: 52,
+                  position: mobileFraming
+                    ? new THREE.Vector3(0.1, 5.25, -21.85)
+                    : new THREE.Vector3(-2.25, 5.12, -23.55),
+                  lookAt: mobileFraming
+                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.95, 0))
+                    : monster,
+                  fov: mobileFraming ? 60 : 52,
                 },
                 {
                   duration: 2.4,
-                  position: new THREE.Vector3(0.25, 4.72, -22.7),
-                  lookAt: new THREE.Vector3(0.65, 4.15, -26.2),
-                  fov: 48,
+                  position: mobileFraming
+                    ? new THREE.Vector3(0.15, 5.05, -21.9)
+                    : new THREE.Vector3(0.25, 4.72, -22.7),
+                  lookAt: mobileFraming
+                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.9, 0))
+                    : new THREE.Vector3(0.65, 4.15, -26.2),
+                  fov: mobileFraming ? 58 : 48,
                 },
               ],
               () => {

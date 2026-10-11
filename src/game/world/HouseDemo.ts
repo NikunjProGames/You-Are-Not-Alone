@@ -1429,7 +1429,6 @@ function addLivingRoom(
     const overhead = new THREE.PointLight("#cbbca0", 4.5, 9, 2);
     overhead.position.set(0, floorHeight + 2.8, -24.75);
     overhead.userData.baseIntensity = overhead.intensity;
-    overhead.castShadow = true;
     scene.add(overhead);
     lights.push(overhead);
     addBox(scene, brass, 0.05, 2.4, 0.05, -3.2, floorHeight + 1.2, -22.2, false);

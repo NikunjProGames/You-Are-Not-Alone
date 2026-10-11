@@ -196,9 +196,9 @@ export class Game {
   private readonly travelTransition = required<HTMLElement>("#travel-transition");
   private readonly travelTransitionTitle = required<HTMLElement>("#travel-transition-title");
   private readonly travelTransitionCopy = required<HTMLElement>("#travel-transition-copy");
-  private readonly creatorDialog = required<HTMLDialogElement>("#creator-dialog");
-  private readonly creatorOpenButton = required<HTMLButtonElement>("#creator-open");
-  private readonly creatorCloseButton = required<HTMLButtonElement>("#creator-close");
+  private readonly creatorDialog = document.querySelector<HTMLDialogElement>("#creator-dialog");
+  private readonly creatorOpenButton = document.querySelector<HTMLButtonElement>("#creator-open");
+  private readonly creatorCloseButton = document.querySelector<HTMLButtonElement>("#creator-close");
   private readonly endingScreen = required<HTMLElement>("#ending-screen");
   private readonly endingTitle = required<HTMLElement>("#ending-title");
   private readonly endingCopy = required<HTMLElement>("#ending-copy");
@@ -383,7 +383,6 @@ export class Game {
     this.startButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
       this.player.requestPointerLock();
-      this.showInterstitial("game_start");
       void this.beginNewGame();
     });
     this.continueButton.addEventListener("click", () => {
@@ -396,13 +395,15 @@ export class Game {
     this.resumeButton.addEventListener("click", () => this.resume());
     this.saveButton.addEventListener("click", () => this.saveCheckpoint());
     this.inspectCloseButton.addEventListener("click", () => this.closeInspection());
-    this.creatorOpenButton.addEventListener("click", () => {
-      if (!this.isPlaying) this.creatorDialog.showModal();
-    });
-    this.creatorCloseButton.addEventListener("click", () => this.creatorDialog.close());
-    this.creatorDialog.addEventListener("click", (event) => {
-      if (event.target === this.creatorDialog) this.creatorDialog.close();
-    });
+    if (this.creatorOpenButton && this.creatorCloseButton && this.creatorDialog) {
+      this.creatorOpenButton.addEventListener("click", () => {
+        if (!this.isPlaying) this.creatorDialog?.showModal();
+      });
+      this.creatorCloseButton.addEventListener("click", () => this.creatorDialog?.close());
+      this.creatorDialog.addEventListener("click", (event) => {
+        if (event.target === this.creatorDialog) this.creatorDialog?.close();
+      });
+    }
     document.addEventListener("click", (event) => {
       if (!this.audio.isStarted || !(event.target instanceof Element)) return;
       if (event.target.closest("button")) this.audio.playUiClick();
@@ -461,15 +462,18 @@ export class Game {
       this.episode.update(delta);
       this.environment.update(delta, this.elapsed);
     }
+    this.hud.classList.toggle("is-cinematic-active", this.cinematics.active);
     this.renderer.render(this.world.scene, this.player.camera);
     if (this.platformInitialized && !this.readyMessageSent) {
       this.readyMessageSent = true;
       this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.GAME_READY);
+      this.showInterstitial("game_start");
     }
     requestAnimationFrame(this.frame);
   };
 
   private async beginNewGame(): Promise<void> {
+    await this.audio.start();
     await this.saves.clear();
     this.story.reset();
     this.events.reset();
@@ -503,6 +507,7 @@ export class Game {
   }
 
   private async continueGame(): Promise<void> {
+    await this.audio.start();
     const snapshot = this.saves.load();
     if (!snapshot) {
       this.showToast("No usable checkpoint was found.");
@@ -728,6 +733,7 @@ export class Game {
   private setAdvertisementPaused(paused: boolean): void {
     if (this.advertisementPaused === paused) return;
     this.advertisementPaused = paused;
+    this.player.resetInput();
     this.audio.setPlatformState(
       this.platformAudioEnabled,
       this.platformPaused || this.advertisementPaused,
@@ -860,29 +866,29 @@ export class Game {
     this.qualityElapsed += delta;
     this.qualityFrameTime += delta;
     this.qualityFrames += 1;
-    if (this.qualityElapsed < 3) return;
+    if (this.qualityElapsed < 1.5) return;
 
     const averageFrameTime = this.qualityFrameTime / this.qualityFrames;
     this.qualityElapsed = 0;
     this.qualityFrameTime = 0;
     this.qualityFrames = 0;
 
-    const frameTimeLimit = this.mobileQuality ? 0.028 : 0.021;
+    const frameTimeLimit = this.mobileQuality ? 0.028 : 0.018;
     const pixelRatioFloor = this.mobileQuality ? 1 : 0.75;
-    if (averageFrameTime > frameTimeLimit && this.pixelRatio > pixelRatioFloor) {
-      this.qualityRecoveryElapsed = 0;
-      this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.1);
-      this.applyRenderScale(window.innerWidth, window.innerHeight);
-      return;
-    }
     if (averageFrameTime > frameTimeLimit && !this.mobileQuality && this.renderer.shadowMap.enabled) {
       this.qualityRecoveryElapsed = 0;
       this.adaptiveShadowsDisabled = true;
       this.renderer.shadowMap.enabled = false;
       return;
     }
+    if (averageFrameTime > frameTimeLimit && this.pixelRatio > pixelRatioFloor) {
+      this.qualityRecoveryElapsed = 0;
+      this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.15);
+      this.applyRenderScale(window.innerWidth, window.innerHeight);
+      return;
+    }
     if (averageFrameTime < 0.017 && this.pixelRatio < this.pixelRatioCeiling) {
-      this.qualityRecoveryElapsed += 3;
+      this.qualityRecoveryElapsed += 1.5;
       if (this.qualityRecoveryElapsed >= 9) {
         this.qualityRecoveryElapsed = 0;
         this.pixelRatio = Math.min(this.pixelRatioCeiling, this.pixelRatio + 0.05);
@@ -891,7 +897,7 @@ export class Game {
       return;
     }
     if (averageFrameTime < 0.0155 && this.adaptiveShadowsDisabled) {
-      this.qualityRecoveryElapsed += 3;
+      this.qualityRecoveryElapsed += 1.5;
       if (this.qualityRecoveryElapsed >= 9) {
         this.qualityRecoveryElapsed = 0;
         this.adaptiveShadowsDisabled = false;

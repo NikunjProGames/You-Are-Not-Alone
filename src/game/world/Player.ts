@@ -170,6 +170,15 @@ export class Player {
     this.lastMouseY = null;
   }
 
+  resetInput(): void {
+    this.keys.clear();
+    this.joystickPointer = null;
+    this.lookPointer = null;
+    this.touchX = 0;
+    this.touchY = 0;
+    this.knob.style.transform = "translate(0, 0)";
+  }
+
   releasePointerLock(): void {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
