@@ -12,6 +12,7 @@ export interface HouseDemo {
   entity: THREE.Group;
   interactables: Interactable[];
   update: (delta: number) => void;
+  updateStreaming: () => void;
   canOccupy: (x: number, z: number, floorHeight: number) => boolean;
   floorAt: (x: number, z: number, currentHeight: number) => number | null;
   setMood: (mood: AtmosphereMood) => void;
@@ -193,6 +194,7 @@ export function buildHouseDemo(
   backRoomLight.userData.baseIntensity = backRoomLight.intensity;
   scene.add(backRoomLight);
   environment.addPractical(backRoomLight);
+  const updateStreaming = createWorldStreamer(scene, getPlayerPosition);
   const housemate = createDemoFigure({
     faceStyle: "zayan",
     coatColor: "#35463f",
@@ -514,6 +516,7 @@ export function buildHouseDemo(
         });
       }
     },
+    updateStreaming,
     floorAt: (x, z, currentHeight) => {
       const onStair = x > 3.55 && x < 5.55 && z > 0.12 && z < 4.95;
       if (onStair) {
@@ -1514,6 +1517,60 @@ function addLivingRoomLateDetails(
   addBox(scene, mats.wood, 0.85, 0.82, 0.76, 2.35, 0.41, 3.55, true);
   addBox(scene, mats.cream, 0.92, 0.06, 0.8, 2.35, 0.84, 3.55, false);
   obstacles.push({ minX: 1.9, maxX: 2.8, minZ: 3.05, maxZ: 4.05 });
+}
+
+function createWorldStreamer(
+  scene: THREE.Scene,
+  getPlayerPosition: () => THREE.Vector3,
+): () => void {
+  const chunkSize = 12;
+  const loadDistance = 26;
+  const unloadDistance = 30;
+  const chunks = new Map<string, { group: THREE.Group; bounds: THREE.Box3; active: boolean }>();
+  const streamedObjects = [...scene.children].filter((object) => !(object instanceof THREE.Light));
+
+  for (const object of streamedObjects) {
+    object.updateWorldMatrix(true, true);
+    const bounds = new THREE.Box3().setFromObject(object);
+    if (bounds.isEmpty()) continue;
+    const size = bounds.getSize(new THREE.Vector3());
+
+    // Keep large shared scenery such as terrain and distant tree lines resident.
+    if (size.x > chunkSize * 2 || size.z > chunkSize * 2) continue;
+
+    const center = bounds.getCenter(new THREE.Vector3());
+    const cellX = Math.floor(center.x / chunkSize);
+    const cellZ = Math.floor(center.z / chunkSize);
+    const key = `${cellX},${cellZ}`;
+    let chunk = chunks.get(key);
+    if (!chunk) {
+      const group = new THREE.Group();
+      group.name = `world-chunk-${key}`;
+      chunk = { group, bounds: new THREE.Box3(), active: false };
+      chunks.set(key, chunk);
+    }
+    chunk.group.add(object);
+    chunk.bounds.union(bounds);
+  }
+
+  const update = (): void => {
+    const player = getPlayerPosition();
+    for (const chunk of chunks.values()) {
+      const closestX = THREE.MathUtils.clamp(player.x, chunk.bounds.min.x, chunk.bounds.max.x);
+      const closestZ = THREE.MathUtils.clamp(player.z, chunk.bounds.min.z, chunk.bounds.max.z);
+      const distanceSquared = (player.x - closestX) ** 2 + (player.z - closestZ) ** 2;
+      const threshold = chunk.active ? unloadDistance : loadDistance;
+      const active = distanceSquared <= threshold ** 2;
+      if (active !== chunk.active) {
+        chunk.active = active;
+        if (active) scene.add(chunk.group);
+        else scene.remove(chunk.group);
+      }
+    }
+  };
+
+  update();
+  return update;
 }
 
 function addLivingRoomDetails(

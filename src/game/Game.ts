@@ -463,6 +463,7 @@ export class Game {
       this.environment.update(delta, this.elapsed);
     }
     this.hud.classList.toggle("is-cinematic-active", this.cinematics.active);
+    this.world.updateStreaming();
     this.renderer.render(this.world.scene, this.player.camera);
     if (this.platformInitialized && !this.readyMessageSent) {
       this.readyMessageSent = true;
