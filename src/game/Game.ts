@@ -858,9 +858,10 @@ export class Game {
       this.lowPowerQuality ? 1.25 : 1.5,
       pixelBudgetRatio,
     );
+    const startingPixelRatio = this.lowPowerQuality ? 1 : this.pixelRatioCeiling;
     this.pixelRatio = this.pixelRatio > 0
       ? Math.min(this.pixelRatio, this.pixelRatioCeiling)
-      : this.pixelRatioCeiling;
+      : Math.min(startingPixelRatio, this.pixelRatioCeiling);
     this.applyRenderScale(width, height);
     this.player.camera.aspect = width / height;
     this.player.camera.updateProjectionMatrix();
