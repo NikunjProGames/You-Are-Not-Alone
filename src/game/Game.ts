@@ -228,7 +228,8 @@ export class Game {
   private qualityFrames = 0;
   private qualityRecoveryElapsed = 0;
   private mobileQuality = window.matchMedia("(pointer: coarse)").matches;
-  private adaptiveShadowsDisabled = false;
+  private lowPowerQuality = this.mobileQuality || navigator.hardwareConcurrency <= 4;
+  private adaptiveShadowsDisabled = this.lowPowerQuality;
   private platformInitialized = false;
   private platformPaused = false;
   private advertisementPaused = false;
@@ -240,14 +241,14 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: !this.lowPowerQuality,
       alpha: false,
       powerPreference: "high-performance",
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
-    this.renderer.shadowMap.enabled = !this.mobileQuality;
+    this.renderer.shadowMap.enabled = !this.lowPowerQuality;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.player = new Player(
@@ -848,11 +849,13 @@ export class Game {
     const width = Math.max(1, window.innerWidth);
     const height = Math.max(1, window.innerHeight);
     this.mobileQuality = window.matchMedia("(pointer: coarse)").matches;
-    this.renderer.shadowMap.enabled = !this.mobileQuality && !this.adaptiveShadowsDisabled;
-    const pixelBudgetRatio = Math.sqrt(4_194_304 / (width * height));
+    this.lowPowerQuality = this.mobileQuality || navigator.hardwareConcurrency <= 4;
+    this.renderer.shadowMap.enabled = !this.lowPowerQuality && !this.adaptiveShadowsDisabled;
+    const pixelBudget = this.lowPowerQuality ? 2_621_440 : 4_194_304;
+    const pixelBudgetRatio = Math.sqrt(pixelBudget / (width * height));
     this.pixelRatioCeiling = Math.min(
       window.devicePixelRatio || 1,
-      this.mobileQuality ? 1.75 : 1.6,
+      this.lowPowerQuality ? 1.25 : 1.5,
       pixelBudgetRatio,
     );
     this.pixelRatio = this.pixelRatio > 0
@@ -874,8 +877,8 @@ export class Game {
     this.qualityFrameTime = 0;
     this.qualityFrames = 0;
 
-    const frameTimeLimit = this.mobileQuality ? 0.028 : 0.018;
-    const pixelRatioFloor = this.mobileQuality ? 1 : 0.75;
+    const frameTimeLimit = this.mobileQuality ? 0.022 : 0.018;
+    const pixelRatioFloor = 0.75;
     if (averageFrameTime > frameTimeLimit && !this.mobileQuality && this.renderer.shadowMap.enabled) {
       this.qualityRecoveryElapsed = 0;
       this.adaptiveShadowsDisabled = true;

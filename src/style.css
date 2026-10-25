@@ -511,8 +511,8 @@ kbd {
   position: absolute;
   top: 30%;
   left: max(38px, env(safe-area-inset-left));
-  width: min(315px, 32vw);
-  padding: 16px 18px 17px;
+  width: min(285px, 30vw);
+  padding: 13px 15px 14px;
   border: 1px solid rgba(188, 147, 112, 0.22);
   border-left: 2px solid rgba(188, 147, 112, 0.72);
   background: linear-gradient(100deg, rgba(8, 11, 12, 0.82), rgba(8, 11, 12, 0.2));
@@ -533,7 +533,7 @@ kbd {
 .objective-card > #objective-text {
   margin: 0;
   color: rgba(246, 240, 228, 0.97);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
@@ -1366,9 +1366,9 @@ kbd {
   .objective-card {
     top: calc(max(10px, env(safe-area-inset-top)) + 42px);
     left: max(12px, env(safe-area-inset-left));
-    width: min(220px, 31vw);
-    padding: 7px 9px 8px;
-    background: rgba(7, 9, 10, 0.54);
+    width: min(190px, 29vw);
+    padding: 6px 8px 7px;
+    background: rgba(7, 9, 10, 0.48);
     backdrop-filter: blur(5px);
   }
 
@@ -1377,25 +1377,25 @@ kbd {
   }
 
   .objective-card > #objective-text {
-    font-size: 10px;
-    line-height: 1.25;
+    font-size: 9px;
+    line-height: 1.2;
   }
 
   .objective-direction {
-    margin-top: 4px;
+    margin-top: 3px;
   }
 
   .dialogue-panel {
     right: 12px;
     bottom: max(8px, env(safe-area-inset-bottom));
     left: 12px;
-    width: min(640px, calc(100vw - 24px));
+    width: min(560px, calc(100vw - 24px));
     max-width: none;
     margin-inline: auto;
-    max-height: 42svh;
-    padding: 7px 11px 5px;
+    max-height: 32svh;
+    padding: 6px 9px 4px;
     border-color: rgba(217, 202, 181, 0.19);
-    background: rgba(7, 9, 10, 0.6);
+    background: rgba(7, 9, 10, 0.48);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(6px);
   }
@@ -1406,13 +1406,13 @@ kbd {
   }
 
   .dialogue-text {
-    font-size: clamp(12px, 2.3vw, 15px);
-    line-height: 1.25;
+    font-size: clamp(11px, 1.9vw, 14px);
+    line-height: 1.2;
   }
 
   .dialogue-choices {
-    gap: 5px;
-    margin-top: 5px;
+    gap: 4px;
+    margin-top: 4px;
   }
 
   .dialogue-choice {
