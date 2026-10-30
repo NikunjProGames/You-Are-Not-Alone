@@ -24,7 +24,7 @@ interface EpisodeOneOptions {
   playTone: (frequency: number, duration: number, volume: number) => void;
   saveCheckpoint: () => void;
   transition: (message: string, title?: string) => void;
-  showInterstitial: (placement: string) => void;
+  showInterstitial: (placement: string) => Promise<void>;
   showEnding: (ending: EpisodeEnding) => void;
 }
 
@@ -226,7 +226,7 @@ export class EpisodeOne {
       return;
     }
     if (id === "rest") {
-      this.rest();
+      void this.rest();
       return;
     }
     const inspections: Record<string, { title: string; text: string }> = {
@@ -1078,7 +1078,7 @@ export class EpisodeOne {
     }
   }
 
-  private rest(): void {
+  private async rest(): Promise<void> {
     const { story } = this.options;
     if (!story.hasFlag("episode.checkInComplete")) {
       this.options.showToast("Check in with the tenant before going upstairs.");
@@ -1094,8 +1094,8 @@ export class EpisodeOne {
       story.setFlag("episode.returnedFromWorkDay2", true);
       this.options.world.setEntryDoorOpen(true);
       this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
+      await this.options.showInterstitial("day_1_complete");
       this.options.transition("You wake before dawn, dress for work and leave. The office stays offscreen; an ordinary shift passes in a black cut. You return home after dark.");
-      this.options.showInterstitial("day_1_complete");
       this.options.setObjective("Enter the house. Someone is waiting near the front hall.", OBJECTIVE_DESTINATIONS.entry);
     } else if (
       story.hasFlag("episode.tenantAskedAboutAren") &&
@@ -1129,8 +1129,8 @@ export class EpisodeOne {
       story.setFlag("episode.returnedFromWorkDay3", true);
       this.options.world.setEntryDoorOpen(true);
       this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
+      await this.options.showInterstitial("day_2_complete");
       this.options.transition("Day three. You wake, go through another ordinary shift, and return to the house after dark. Before you reach the stairs, you hear the tenant shouting at Zayan.");
-      this.options.showInterstitial("day_2_complete");
       this.options.setObjective("Go through the hall. The tenant's voice is raised.", OBJECTIVE_DESTINATIONS.arenDining);
     } else if (story.hasFlag("episode.planMade") && story.value.day === 3) {
       story.setFlag("episode.sundayMorning", true);
@@ -1138,11 +1138,11 @@ export class EpisodeOne {
       story.setFlag("episode.arenRoomAvailable", true);
       this.options.world.setArenRoomAvailable(true);
       this.options.characters.despawn("housemate");
+      await this.options.showInterstitial("day_3_complete");
       this.options.transition(
         "The house is quiet. Zayan does not answer from his room.",
         "DAY 4 — THE LAST DAY",
       );
-      this.options.showInterstitial("day_3_complete");
       this.options.setObjective("Try Zayan's upstairs door.", OBJECTIVE_DESTINATIONS.arenDoor);
     } else {
       this.options.showToast("There is more to settle before you can sleep.");

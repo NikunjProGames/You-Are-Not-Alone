@@ -233,6 +233,9 @@ export class Game {
   private platformInitialized = false;
   private platformPaused = false;
   private advertisementPaused = false;
+  private interstitialPromise: Promise<void> | null = null;
+  private interstitialCompletion: (() => void) | null = null;
+  private interstitialTimeout = 0;
   private platformAudioEnabled = true;
   private readyMessageSent = false;
   private rewardedHintPending = false;
@@ -334,6 +337,11 @@ export class Game {
         if (paused) {
           this.player.releasePointerLock();
           void this.saveCheckpoint(false);
+        } else {
+          this.restorePlayerAfterPause();
+          if (this.isPlaying && !this.advertisementPaused) {
+            this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_RESUMED);
+          }
         }
       });
       await this.saves.initialize(bridge.platform.id === bridge.PLATFORM_ID.MOCK);
@@ -369,6 +377,9 @@ export class Game {
     this.travelTransitionTitle.hidden = !title;
     this.travelTransitionCopy.textContent = message;
     this.travelTransition.hidden = false;
+    this.player.resetInput();
+    this.player.setLookEnabled(false);
+    this.player.releasePointerLock();
     this.travelTransition.classList.remove("travel-transition");
     this.travelTransition.classList.remove("day-title-card");
     void this.travelTransition.offsetWidth;
@@ -376,6 +387,7 @@ export class Game {
     if (title) this.travelTransition.classList.add("day-title-card");
     this.travelTransitionTimeout = window.setTimeout(() => {
       this.travelTransition.hidden = true;
+      this.restorePlayerAfterPause();
     }, 4200);
   }
 
@@ -469,7 +481,7 @@ export class Game {
     if (this.platformInitialized && !this.readyMessageSent) {
       this.readyMessageSent = true;
       this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.GAME_READY);
-      this.showInterstitial("game_start");
+      void this.showInterstitial("game_start");
     }
     requestAnimationFrame(this.frame);
   };
@@ -558,10 +570,7 @@ export class Game {
         this.player.setLookEnabled(false);
         this.player.releasePointerLock();
         this.interactions.clearFocus();
-      } else if (this.isPlaying && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
-        this.player.setLookEnabled(true);
-        this.player.requestPointerLock();
-      }
+      } else this.restorePlayerAfterPause();
     });
     this.dialogues.setChoiceHandlers((conversationId, choiceId) => {
       this.story.recordChoice(conversationId, choiceId);
@@ -583,10 +592,7 @@ export class Game {
 
   private closeInspection(): void {
     this.inspectionPanel.hidden = true;
-    if (this.isPlaying && this.pauseScreen.hidden) {
-      this.player.setLookEnabled(true);
-      this.player.requestPointerLock();
-    }
+    this.restorePlayerAfterPause();
   }
 
   private openDialogue(event: CustomEvent<Conversation>): void {
@@ -615,9 +621,7 @@ export class Game {
 
   private resume(): void {
     this.pauseScreen.hidden = true;
-    this.player.setLookEnabled(true);
-    this.player.focusCanvas();
-    this.player.requestPointerLock();
+    this.restorePlayerAfterPause();
     this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_RESUMED);
   }
 
@@ -729,6 +733,7 @@ export class Game {
       state === bridge.INTERSTITIAL_STATE.FAILED
     ) {
       this.setAdvertisementPaused(false);
+      this.completeInterstitial();
     }
   }
 
@@ -749,12 +754,28 @@ export class Game {
       }
       return;
     }
-    if (this.isPlaying && !this.platformPaused && this.pauseScreen.hidden && this.inspectionPanel.hidden) {
-      this.player.setLookEnabled(true);
-      this.player.focusCanvas();
-      this.player.requestPointerLock();
+    this.restorePlayerAfterPause();
+    if (!paused && this.isPlaying && !this.platformPaused) {
       this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_RESUMED);
     }
+  }
+
+  private restorePlayerAfterPause(): void {
+    if (
+      !this.isPlaying ||
+      this.platformPaused ||
+      this.advertisementPaused ||
+      !this.pauseScreen.hidden ||
+      !this.inspectionPanel.hidden ||
+      !this.travelTransition.hidden ||
+      this.dialogues.isActive ||
+      this.cinematics.active
+    ) {
+      return;
+    }
+    this.player.setLookEnabled(true);
+    this.player.focusCanvas();
+    this.player.requestPointerLock();
   }
 
   private revealHint(isFreeFallback: boolean): void {
@@ -776,13 +797,37 @@ export class Game {
     }, 4200);
   }
 
-  private showInterstitial(placement: string): void {
-    if (!this.platformInitialized || !bridge.advertisement.isInterstitialSupported) return;
+  private showInterstitial(placement: string): Promise<void> {
+    if (!this.platformInitialized || !bridge.advertisement.isInterstitialSupported) {
+      return Promise.resolve();
+    }
+    if (this.interstitialPromise) return this.interstitialPromise;
+
+    this.interstitialPromise = new Promise((resolve) => {
+      this.interstitialCompletion = () => {
+        window.clearTimeout(this.interstitialTimeout);
+        this.interstitialTimeout = 0;
+        this.interstitialCompletion = null;
+        this.interstitialPromise = null;
+        resolve();
+      };
+      this.interstitialTimeout = window.setTimeout(() => {
+        console.error(`Playgama did not complete the interstitial ad at "${placement}".`);
+        this.setAdvertisementPaused(false);
+        this.completeInterstitial();
+      }, 30_000);
+    });
     try {
       bridge.advertisement.showInterstitial(placement);
     } catch (error) {
       console.error(`Unable to show interstitial ad at "${placement}".`, error);
+      this.completeInterstitial();
     }
+    return this.interstitialPromise ?? Promise.resolve();
+  }
+
+  private completeInterstitial(): void {
+    this.interstitialCompletion?.();
   }
 
   private updateObjectiveDirection(): void {

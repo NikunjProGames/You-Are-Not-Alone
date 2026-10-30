@@ -803,13 +803,18 @@ kbd {
   z-index: 7;
   top: 50%;
   left: 50%;
-  width: min(500px, calc(100vw - 40px));
-  padding: 31px 34px;
+  display: flex;
+  flex-direction: column;
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  padding: clamp(18px, 5vw, 31px) clamp(18px, 6vw, 34px);
   transform: translate(-50%, -50%);
   border: 1px solid rgba(220, 205, 183, 0.2);
   background: rgba(12, 15, 15, 0.94);
   box-shadow: 0 25px 90px rgba(0, 0, 0, 0.56);
   backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
 .ending-screen {
@@ -1008,18 +1013,28 @@ kbd {
 }
 
 .inspection-panel h2 {
-  font-size: 35px;
+  flex: 0 0 auto;
+  font-size: clamp(25px, 5vw, 35px);
+  overflow-wrap: anywhere;
 }
 
 .inspection-panel > p:not(.eyebrow) {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 8px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: #c8c0b2;
   font-family: "Baskerville", "Palatino Linotype", Georgia, serif;
-  font-size: 20px;
+  font-size: clamp(16px, 3.2vw, 20px);
   line-height: 1.55;
 }
 
 .inspection-panel .text-button {
-  margin-top: 12px;
+  flex: 0 0 auto;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 0;
 }
 
 .mobile-controls {
@@ -1279,6 +1294,11 @@ kbd {
 }
 
 @media (max-width: 600px) {
+  .inspection-panel {
+    width: calc(100vw - max(24px, env(safe-area-inset-left)) - max(24px, env(safe-area-inset-right)));
+    padding: 18px 20px;
+  }
+
   .objective-card {
     top: calc(max(19px, env(safe-area-inset-top)) + 52px);
     left: 14px;
@@ -1359,6 +1379,29 @@ kbd {
   .dialogue-continue {
     margin-top: 5px;
     font-size: 9px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .inspection-panel {
+    width: min(560px, calc(100vw - 32px));
+    padding: 12px 18px;
+  }
+
+  .inspection-panel h2 {
+    margin: 5px 0;
+    font-size: 24px;
+  }
+
+  .inspection-panel > p:not(.eyebrow) {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  .inspection-panel .text-button {
+    min-height: 40px;
+    margin-top: 4px;
+    padding: 8px 0;
   }
 }
 
