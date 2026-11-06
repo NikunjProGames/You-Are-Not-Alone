@@ -243,7 +243,6 @@ export class Game {
   private qualityRecoveryElapsed = 0;
   private mobileQuality = window.matchMedia("(pointer: coarse)").matches;
   private lowPowerQuality = this.mobileQuality || navigator.hardwareConcurrency <= 4;
-  private adaptiveShadowsDisabled = this.lowPowerQuality;
   private platformInitialized = false;
   private platformPaused = false;
   private advertisementPaused = false;
@@ -258,14 +257,14 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: !this.lowPowerQuality,
+      antialias: false,
       alpha: false,
       powerPreference: "high-performance",
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
-    this.renderer.shadowMap.enabled = !this.lowPowerQuality;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.player = new Player(
@@ -929,13 +928,13 @@ export class Game {
     const height = Math.max(1, window.innerHeight);
     this.mobileQuality = window.matchMedia("(pointer: coarse)").matches;
     this.lowPowerQuality = this.mobileQuality || navigator.hardwareConcurrency <= 4;
-    this.renderer.shadowMap.enabled = !this.lowPowerQuality && !this.adaptiveShadowsDisabled;
+    this.renderer.shadowMap.enabled = false;
     document.documentElement.dataset.renderProfile = this.lowPowerQuality ? "efficient" : "balanced";
-    const pixelBudget = this.lowPowerQuality ? 3_145_728 : 6_291_456;
+    const pixelBudget = this.lowPowerQuality ? 3_145_728 : 4_194_304;
     const pixelBudgetRatio = Math.sqrt(pixelBudget / (width * height));
     this.pixelRatioCeiling = Math.min(
       window.devicePixelRatio || 1,
-      this.lowPowerQuality ? 1.35 : 1.75,
+      this.lowPowerQuality ? 1.35 : 1.5,
       pixelBudgetRatio,
     );
     const startingPixelRatio = this.lowPowerQuality ? 1 : this.pixelRatioCeiling;
@@ -962,11 +961,6 @@ export class Game {
     const pixelRatioFloor = this.lowPowerQuality ? 0.82 : 0.78;
     if (averageFrameTime > frameTimeLimit) {
       this.qualityRecoveryElapsed = 0;
-      if (!this.lowPowerQuality && this.renderer.shadowMap.enabled) {
-        this.adaptiveShadowsDisabled = true;
-        this.renderer.shadowMap.enabled = false;
-        return;
-      }
       if (this.pixelRatio > pixelRatioFloor) {
         this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.08);
         this.applyRenderScale(window.innerWidth, window.innerHeight);
@@ -980,9 +974,6 @@ export class Game {
         if (this.pixelRatio < this.pixelRatioCeiling) {
           this.pixelRatio = Math.min(this.pixelRatioCeiling, this.pixelRatio + 0.04);
           this.applyRenderScale(window.innerWidth, window.innerHeight);
-        } else if (this.adaptiveShadowsDisabled && !this.lowPowerQuality) {
-          this.adaptiveShadowsDisabled = false;
-          this.renderer.shadowMap.enabled = true;
         }
       }
       return;

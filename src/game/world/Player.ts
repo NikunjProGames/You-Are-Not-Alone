@@ -7,7 +7,7 @@ export interface PlayerInput {
 }
 
 export class Player {
-  readonly position = new THREE.Vector3(0, 1.64, 3.1);
+  readonly position = new THREE.Vector3(0, 1.64, 9.25);
   readonly camera = new THREE.PerspectiveCamera(68, 1, 0.08, 90);
   yaw = 0;
   pitch = 0;
@@ -148,6 +148,8 @@ export class Player {
     this.position.set(checkpoint.x, checkpoint.y + 1.64, checkpoint.z);
     this.yaw = checkpoint.yaw;
     this.pitch = 0;
+    this.camera.position.copy(this.position);
+    this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
   }
 
   captureCameraLook(): void {

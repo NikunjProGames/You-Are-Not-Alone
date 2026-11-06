@@ -67,7 +67,7 @@
 
 - Replace foundation-only environment and character treatments with a coherent licensed/custom asset set.
 - [~] Refine house dressing, lighting, environmental audio, title, objective UI, page information, and discoverability. The transom, facade details, laundry dressing, button/door sounds, readable rest transition, and creator dialog are implemented; continue room-by-room art direction, character presentation, sound pacing, subtitles, accessibility, and interaction feedback.
-- [~] Tune rendering with device-aware pixel budgets, staged shadow/resolution reduction and low-power UI effects; validate smoothness and readable quality on representative phones and low-end PCs before setting performance targets.
+- [~] Tune rendering with consistent shadow/antialiasing costs, device-aware pixel budgets and low-power UI effects; validate smoothness and readable quality on representative phones and low-end PCs before setting performance targets.
 - Keep an asset/license inventory and document any real sourcing or quality limitations.
 
 ## Phase 5 — Story validation, bug fixing, and release QA (not complete)
