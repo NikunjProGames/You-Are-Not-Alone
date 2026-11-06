@@ -31,6 +31,7 @@ interface EpisodeOneOptions {
 
 const FINAL_ROOM_CENTER = new THREE.Vector3(0, 4.8, -24.7);
 const FRIEND_ROOM_CENTER = new THREE.Vector3(3.3, 4.8, -2.55);
+const PROTAGONIST_BEDROOM_WAKE = { x: -4.15, y: 3.16, z: -4.34, yaw: 0 };
 const OBJECTIVE_DESTINATIONS = {
   entry: new THREE.Vector3(0, 0, 6),
   reception: new THREE.Vector3(-1.5, 0, 3.1),
@@ -105,6 +106,12 @@ export class EpisodeOne {
 
   restore(snapshot: Readonly<StorySnapshot>): void {
     const { world, characters } = this.options;
+    const savedAtLegacyBedroomWake =
+      snapshot.day === 2 &&
+      snapshot.flags["episode.restedOnce"] === true &&
+      snapshot.flags["episode.dayTwoBlackoutSeen"] !== true &&
+      Math.abs(snapshot.player.x + 4.15) < 0.55 &&
+      Math.abs(snapshot.player.z + 2.9) < 0.55;
     if (
       snapshot.day >= 3 &&
       snapshot.flags["episode.returnedFromWorkDay3"] === true &&
@@ -113,14 +120,19 @@ export class EpisodeOne {
     ) {
       this.options.player.restore({ x: 0, y: 0, z: 2.2, yaw: 0 });
     }
-    if (
+    if (savedAtLegacyBedroomWake) {
+      this.options.story.setFlag("episode.dayTwoWake", true);
+      this.options.player.resetInput();
+      this.options.player.restore(PROTAGONIST_BEDROOM_WAKE);
+    } else if (
       snapshot.day === 2 &&
       snapshot.flags["episode.restedOnce"] === true &&
       snapshot.flags["episode.dayTwoWake"] !== true &&
       snapshot.flags["episode.dayTwoBlackoutSeen"] !== true
     ) {
       this.options.story.setFlag("episode.dayTwoWake", true);
-      this.options.player.restore({ x: -4.15, y: 4.8, z: -2.9, yaw: 0 });
+      this.options.player.resetInput();
+      this.options.player.restore(PROTAGONIST_BEDROOM_WAKE);
     }
     if (
       snapshot.flags["episode.finalDoorOpened"] === true &&
@@ -142,6 +154,10 @@ export class EpisodeOne {
     world.setStoneCollected(snapshot.flags["episode.stoneFound"] === true);
     world.setUpperEntryDoorOpen(true);
     world.setUpperTenantDoorOpen(true);
+    world.setProtagonistRoomDoorOpen(
+      (snapshot.day === 2 && snapshot.flags["episode.dayTwoWake"] === true) ||
+      isInsideProtagonistBedroom(this.options.player.getCheckpoint()),
+    );
     world.setBedroomDoorOpen(snapshot.flags["episode.bedroomExitOpen"] === true);
     world.setFinalDoorOpen(snapshot.flags["episode.finalDoorOpened"] === true);
     if (
@@ -1172,7 +1188,9 @@ export class EpisodeOne {
       story.setFlag("episode.restedOnce", true);
       this.advanceTo(2, "morning");
       story.setFlag("episode.dayTwoWake", true);
-      this.options.player.restore({ x: -4.15, y: 4.8, z: -2.9, yaw: 0 });
+      this.options.player.resetInput();
+      this.options.world.setProtagonistRoomDoorOpen(true);
+      this.options.player.restore(PROTAGONIST_BEDROOM_WAKE);
       await this.options.showInterstitial("day_1_complete");
       this.options.transition(
         "You wake in your upstairs room. The old portrait on the wall looks unsettlingly familiar.",
@@ -1192,6 +1210,7 @@ export class EpisodeOne {
       this.options.world.setEntryDoorOpen(true);
       this.options.player.resetInput();
       this.options.player.restore({ x: 0, y: 0, z: 2.2, yaw: 0 });
+      this.options.world.setProtagonistRoomDoorOpen(false);
       await this.options.showInterstitial("day_2_complete");
       this.options.transition(
         "You follow Zayan's advice and return to your room. After an uneasy night and an ordinary shift, you come home the following evening.",
@@ -1207,6 +1226,9 @@ export class EpisodeOne {
       story.setFlag("episode.arenRoomAvailable", true);
       this.options.world.setArenRoomAvailable(true);
       this.options.characters.despawn("housemate");
+      this.options.player.resetInput();
+      this.options.player.restore({ x: -1.45, y: 3.16, z: -2.55, yaw: 0 });
+      this.options.world.setProtagonistRoomDoorOpen(false);
       await this.options.showInterstitial("day_3_complete");
       this.options.transition(
         "The house is quiet. Zayan does not answer from his room.",
@@ -1506,4 +1528,14 @@ export class EpisodeOne {
   private say(conversation: Conversation): void {
     window.dispatchEvent(new CustomEvent("game:dialogue", { detail: conversation }));
   }
+}
+
+function isInsideProtagonistBedroom(position: { x: number; y: number; z: number }): boolean {
+  return (
+    position.y > 2.2 &&
+    position.x > -5.72 &&
+    position.x < -2.15 &&
+    position.z > -4.72 &&
+    position.z < -0.24
+  );
 }
