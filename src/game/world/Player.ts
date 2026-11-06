@@ -126,9 +126,9 @@ export class Player {
         this.position.z = nextZ;
         this.position.y = nextZFloor + 1.64;
       }
+      this.camera.position.copy(this.position);
+      this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     }
-    this.camera.position.copy(this.position);
-    this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
   }
 
   rotate(deltaX: number, deltaY: number): void {
@@ -148,6 +148,12 @@ export class Player {
     this.position.set(checkpoint.x, checkpoint.y + 1.64, checkpoint.z);
     this.yaw = checkpoint.yaw;
     this.pitch = 0;
+  }
+
+  captureCameraLook(): void {
+    const direction = this.camera.getWorldDirection(this.movementForward);
+    this.yaw = Math.atan2(-direction.x, -direction.z);
+    this.pitch = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
   }
 
   requestPointerLock(): void {

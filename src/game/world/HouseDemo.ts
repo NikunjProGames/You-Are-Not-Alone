@@ -16,6 +16,7 @@ export interface HouseDemo {
   canOccupy: (x: number, z: number, floorHeight: number) => boolean;
   floorAt: (x: number, z: number, currentHeight: number) => number | null;
   setMood: (mood: AtmosphereMood) => void;
+  setBlackout: (active: boolean) => void;
   setDoorOpen: (open: boolean) => void;
   setBackRoomDoorOpen: (open: boolean) => void;
   setBedroomDoorOpen: (open: boolean) => void;
@@ -23,6 +24,7 @@ export interface HouseDemo {
   setWestStoreOpen: (open: boolean) => void;
   setTenantStudyOpen: (open: boolean) => void;
   setEntryDoorOpen: (open: boolean) => void;
+  setTenantRoomDoorOpen: (open: boolean) => void;
   setArenRoomAvailable: (available: boolean) => void;
   setArenRoomDoorOpen: (open: boolean) => void;
   setHousemateCleaning: (cleaning: boolean) => void;
@@ -86,6 +88,8 @@ export function buildHouseDemo(
   windowLight.shadow.camera.bottom = -8;
   windowLight.shadow.bias = -0.0004;
   scene.add(windowLight);
+  const hemiIntensity = hemi.intensity;
+  const windowLightIntensity = windowLight.intensity;
   const ceilingLight = new THREE.PointLight("#d9b78a", 9, 12, 2);
   ceilingLight.position.set(1.4, 2.75, 0.5);
   ceilingLight.userData.baseIntensity = ceilingLight.intensity;
@@ -266,6 +270,7 @@ export function buildHouseDemo(
   scene.add(entity);
   let finaleFlicker = false;
   let finaleElapsed = 0;
+  let finaleReveal = 0;
 
   const playerInBounds = (minX: number, maxX: number, minZ: number, maxZ: number): boolean => {
     const { x, z } = getPlayerPosition();
@@ -411,6 +416,7 @@ export function buildHouseDemo(
     { id: "rest", position: [-4.15, 4.07, -2.9], color: "#b9ad98", size: [0.18, 0.025, 0.12] },
     { id: "stone", position: [1.15, 0.08, 12.5], color: "#77736c", size: [0.34, 0.22, 0.28] },
   ]);
+  addTenantPortrait(scene, interactables, onStoryInteraction);
   interactables.push({
     id: "foundation-back-room-door",
     prompt: () =>
@@ -510,9 +516,19 @@ export function buildHouseDemo(
       upstairsTenantDoor.update(delta);
       if (finaleFlicker) {
         finaleElapsed += delta;
-        const flicker = Math.sin(finaleElapsed * 31) > 0.74 ? 0.08 : 0.45 + Math.max(0, Math.sin(finaleElapsed * 12)) * 0.72;
-        finaleLights.forEach((light) => {
-          light.intensity = light.userData.baseIntensity * flicker;
+        const pulse =
+          0.94 +
+          Math.sin(finaleElapsed * 1.7) * 0.035 +
+          Math.pow(Math.max(0, Math.sin(finaleElapsed * 4.4)), 12) * 0.05;
+        finaleLights.forEach((light, index) => {
+          const isOverhead = index === finaleLights.length - 1;
+          const dimLevel = isOverhead ? 0.18 : 0.28;
+          const revealLevel = isOverhead ? 0.86 : 0.92;
+          light.intensity = light.userData.baseIntensity *
+            THREE.MathUtils.lerp(dimLevel, revealLevel, finaleReveal) * pulse;
+          const baseColor = light.userData.baseColor as THREE.Color;
+          const revealColor = light.userData.revealColor as THREE.Color;
+          light.color.copy(baseColor).lerp(revealColor, finaleReveal);
         });
       }
     },
@@ -618,8 +634,14 @@ export function buildHouseDemo(
       );
     },
     setMood: (mood) => environment.setMood(mood),
+    setBlackout: (active) => {
+      environment.setBlackout(active);
+      hemi.intensity = active ? 0 : hemiIntensity;
+      windowLight.intensity = active ? 0 : windowLightIntensity;
+    },
     setDoorOpen: (open) => door.setOpen(open),
     setEntryDoorOpen: (open) => entryDoor.setOpen(open),
+    setTenantRoomDoorOpen: (open) => eastDoor.setOpen(open),
     setBackRoomDoorOpen: (open) => backRoomDoor.setOpen(open),
     setBedroomDoorOpen: (open) => bedroomExitDoor.setOpen(open),
     setFinalDoorOpen: (open) => finalDoor.setOpen(open),
@@ -651,12 +673,23 @@ export function buildHouseDemo(
     setUpperTenantDoorOpen: (open) => upstairsTenantDoor.setOpen(open),
     setFinaleFlicker: (active) => {
       finaleFlicker = active;
-      if (!active) finaleLights.forEach((light) => {
-        light.intensity = light.userData.baseIntensity;
-      });
+      if (active) {
+        finaleElapsed = 0;
+        hemi.intensity = 0.38;
+        windowLight.intensity = 0.34;
+      } else {
+        finaleReveal = 0;
+        hemi.intensity = hemiIntensity;
+        windowLight.intensity = windowLightIntensity;
+        finaleLights.forEach((light) => {
+          light.intensity = light.userData.baseIntensity;
+          light.color.copy(light.userData.baseColor as THREE.Color);
+        });
+      }
     },
     setEntityReveal: (amount) => {
       const reveal = THREE.MathUtils.clamp(amount, 0, 1);
+      finaleReveal = reveal;
       entity.visible = finaleFlicker || reveal > 0;
       entity.scale.set(
         THREE.MathUtils.lerp(1.05, 1.42, reveal),
@@ -1426,12 +1459,16 @@ function addLivingRoom(
       const pool = new THREE.PointLight("#8b5541", 1.4, 4.5, 2);
       pool.position.set(x, floorHeight + 2.1, -24.1);
       pool.userData.baseIntensity = pool.intensity;
+      pool.userData.baseColor = pool.color.clone();
+      pool.userData.revealColor = new THREE.Color(x < 0 ? "#668a9b" : "#a9473c");
       scene.add(pool);
       lights.push(pool);
     }
     const overhead = new THREE.PointLight("#cbbca0", 4.5, 9, 2);
     overhead.position.set(0, floorHeight + 2.8, -24.75);
     overhead.userData.baseIntensity = overhead.intensity;
+    overhead.userData.baseColor = overhead.color.clone();
+    overhead.userData.revealColor = new THREE.Color("#c6d9df");
     scene.add(overhead);
     lights.push(overhead);
     addBox(scene, brass, 0.05, 2.4, 0.05, -3.2, floorHeight + 1.2, -22.2, false);
@@ -1452,6 +1489,97 @@ function addLivingRoom(
       scene.add(loop);
     }
     return lights;
+  }
+
+  function addTenantPortrait(
+    scene: THREE.Scene,
+    interactables: Interactable[],
+    onStoryInteraction: (id: string) => void,
+  ): void {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 320;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("The tenant portrait could not be drawn.");
+
+    const background = context.createLinearGradient(0, 0, 256, 320);
+    background.addColorStop(0, "#6f6250");
+    background.addColorStop(1, "#292d2a");
+    context.fillStyle = background;
+    context.fillRect(0, 0, 256, 320);
+    context.fillStyle = "#8b704e";
+    context.beginPath();
+    context.ellipse(128, 132, 86, 102, 0, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = "#302b27";
+    context.beginPath();
+    context.moveTo(42, 117);
+    context.quadraticCurveTo(41, 12, 132, 31);
+    context.quadraticCurveTo(218, 26, 214, 122);
+    context.quadraticCurveTo(181, 73, 128, 77);
+    context.quadraticCurveTo(76, 78, 42, 117);
+    context.fill();
+    context.fillStyle = "#d6c3a0";
+    context.beginPath();
+    context.ellipse(97, 133, 15, 10, 0, 0, Math.PI * 2);
+    context.ellipse(160, 133, 15, 10, 0, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = "#302b27";
+    context.beginPath();
+    context.arc(99, 134, 5, 0, Math.PI * 2);
+    context.arc(160, 134, 5, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = "#302b27";
+    context.lineWidth = 9;
+    context.beginPath();
+    context.moveTo(78, 112);
+    context.lineTo(112, 121);
+    context.moveTo(144, 118);
+    context.lineTo(179, 105);
+    context.stroke();
+    context.fillStyle = "#70523f";
+    context.beginPath();
+    context.moveTo(128, 137);
+    context.lineTo(116, 179);
+    context.quadraticCurveTo(130, 187, 143, 177);
+    context.fill();
+    context.fillStyle = "#382a24";
+    context.beginPath();
+    context.ellipse(128, 196, 44, 18, 0, Math.PI, Math.PI * 2);
+    context.fill();
+    context.fillStyle = "#59483a";
+    context.beginPath();
+    context.moveTo(52, 320);
+    context.quadraticCurveTo(67, 225, 128, 230);
+    context.quadraticCurveTo(196, 226, 208, 320);
+    context.fill();
+    context.fillStyle = "#c8b994";
+    context.font = "bold 13px Georgia";
+    context.textAlign = "center";
+    context.fillText("THE TENANT'S FATHER", 128, 302);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.94, 1.18, 0.075),
+      new THREE.MeshStandardMaterial({ color: "#40342b", roughness: 0.83 }),
+    );
+    frame.position.set(-4.15, 5.18, -4.87);
+    const canvasMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.8, 1.0),
+      new THREE.MeshBasicMaterial({ map: texture }),
+    );
+    canvasMesh.position.set(-4.15, 5.18, -4.824);
+    canvasMesh.userData.storyProp = "tenant-portrait";
+    const portrait = new THREE.Group();
+    portrait.add(frame, canvasMesh);
+    scene.add(portrait);
+    interactables.push({
+      id: "episode-tenant-portrait",
+      prompt: "Inspect the old portrait",
+      object: portrait,
+      interact: () => onStoryInteraction("tenant-portrait"),
+    });
   }
 
   function addEpisodeProps(

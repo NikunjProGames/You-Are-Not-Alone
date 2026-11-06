@@ -57,7 +57,7 @@
 
 - [~] Expand the connected procedural house to two storeys, with stairs, a central upper-corridor entrance, protagonist's bedroom on the left, Zayan's room on the right, a separate tenant room, and a larger finale room. The revised layout is implemented; validate the landing, room entrances, doors, route blockers, and complete traversal before marking complete.
 - [x] Establish fire loss, financial pressure, job, unusually cheap rental, outside arrival, check-in, upstairs rest, and offscreen work transitions.
-- [~] Implement multiple suspicious encounters/clues involving Zayan, the distinct first strange person. Zayan retreats on first encounter; the required Day 2 laundry scene, stain inspection, repeated talks, shared pipe repair, and Day 3 scolding support suspicion-to-trust progression. The sleep gate now prevents bypassing the laundry chain; full pacing and missable-clue recovery remain unverified.
+- [~] Implement multiple suspicious encounters/clues involving Zayan, the distinct first strange person. Day 2 now uses the tenant-father portrait, a voice, a blackout, and a shared encounter; Day 3 carries the stain, leak repair, trust, and tenant-scolding chain before records. Fresh-play progression and recovery validation remain.
 - [~] Implement a separate post-trust tenant investigation with behavior, clues, contradictions, and confrontation. The complete evidence chain remains to be fresh-play tested.
 - [~] Implement the Day 3 plan, red Sunday/Day 4 title card, room check and disappearance, stone-gated forbidden door, transformation, canonical line, and three state-based ending cards. Full finale and each variant remain unverified.
 - [~] Include door-detail meshes in their interaction targets so decorative insets do not occlude prompts. Controlled checks confirmed front-door focus, opening, and passage; test every route in a foreground playthrough.
@@ -67,7 +67,7 @@
 
 - Replace foundation-only environment and character treatments with a coherent licensed/custom asset set.
 - [~] Refine house dressing, lighting, environmental audio, title, objective UI, page information, and discoverability. The transom, facade details, laundry dressing, button/door sounds, readable rest transition, and creator dialog are implemented; continue room-by-room art direction, character presentation, sound pacing, subtitles, accessibility, and interaction feedback.
-- Tune desktop visual quality and add reasonable mobile quality scaling.
+- [~] Tune rendering with device-aware pixel budgets, staged shadow/resolution reduction and low-power UI effects; validate smoothness and readable quality on representative phones and low-end PCs before setting performance targets.
 - Keep an asset/license inventory and document any real sourcing or quality limitations.
 
 ## Phase 5 — Story validation, bug fixing, and release QA (not complete)

@@ -5,6 +5,7 @@ export type AtmosphereMood = "settled" | "uneasy";
 export class EnvironmentSystem {
   private mood: AtmosphereMood = "settled";
   private flickerTime = 0;
+  private blackedOut = false;
   private readonly fixtures: THREE.PointLight[] = [];
 
   constructor(
@@ -21,6 +22,10 @@ export class EnvironmentSystem {
     this.audio.setAmbience(mood === "uneasy" ? 0.075 : 0.045);
   }
 
+  setBlackout(active: boolean): void {
+    this.blackedOut = active;
+  }
+
   update(delta: number, elapsed: number): void {
     this.flickerTime += delta;
     const isUneasy = this.mood === "uneasy";
@@ -29,7 +34,7 @@ export class EnvironmentSystem {
       const flicker = isUneasy && index === 0 && this.flickerTime > 10
         ? Math.max(0.82, 1 - Math.max(0, Math.sin(elapsed * 19)) * 0.11)
         : 1;
-      light.intensity = light.userData.baseIntensity * flicker + pulse;
+      light.intensity = this.blackedOut ? 0 : light.userData.baseIntensity * flicker + pulse;
     });
   }
 }

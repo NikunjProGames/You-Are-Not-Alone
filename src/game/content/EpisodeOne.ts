@@ -22,6 +22,7 @@ interface EpisodeOneOptions {
   setObjective: (objective: string, destination?: THREE.Vector3) => void;
   showToast: (message: string) => void;
   playTone: (frequency: number, duration: number, volume: number) => void;
+  setBlackout: (active: boolean) => void;
   saveCheckpoint: () => void;
   transition: (message: string, title?: string) => void;
   showInterstitial: (placement: string) => Promise<void>;
@@ -40,6 +41,8 @@ const OBJECTIVE_DESTINATIONS = {
   storageKey: new THREE.Vector3(-9.45, 0, -9.45),
   tenantLedger: new THREE.Vector3(5.1, 0, -10.6),
   tenantStudy: new THREE.Vector3(9.55, 0, -10.45),
+  tenantRoom: new THREE.Vector3(3.0, 0, -8.4),
+  tenantPortrait: new THREE.Vector3(-4.15, 5.18, -4.82),
   arenDoor: new THREE.Vector3(2.15, 4.4, -2.55),
   rescueStone: new THREE.Vector3(1.15, 0, 12.5),
   forbiddenDoor: new THREE.Vector3(0, 4.8, -20.2),
@@ -48,8 +51,6 @@ const OBJECTIVE_DESTINATIONS = {
 export class EpisodeOne {
   private transforming = false;
   private transformationElapsed = 0;
-  private retreating = false;
-  private retreatElapsed = 0;
   private friendRoomDiscoveryPending = false;
 
   constructor(private readonly options: EpisodeOneOptions) {
@@ -105,6 +106,23 @@ export class EpisodeOne {
   restore(snapshot: Readonly<StorySnapshot>): void {
     const { world, characters } = this.options;
     if (
+      snapshot.day >= 3 &&
+      snapshot.flags["episode.returnedFromWorkDay3"] === true &&
+      Math.abs(snapshot.player.x) < 0.4 &&
+      Math.abs(snapshot.player.z - 5.1) < 0.55
+    ) {
+      this.options.player.restore({ x: 0, y: 0, z: 2.2, yaw: 0 });
+    }
+    if (
+      snapshot.day === 2 &&
+      snapshot.flags["episode.restedOnce"] === true &&
+      snapshot.flags["episode.dayTwoWake"] !== true &&
+      snapshot.flags["episode.dayTwoBlackoutSeen"] !== true
+    ) {
+      this.options.story.setFlag("episode.dayTwoWake", true);
+      this.options.player.restore({ x: -4.15, y: 4.8, z: -2.9, yaw: 0 });
+    }
+    if (
       snapshot.flags["episode.finalDoorOpened"] === true &&
       snapshot.flags["episode.endingStarted"] !== true &&
       snapshot.player.y < 2.2 &&
@@ -115,6 +133,7 @@ export class EpisodeOne {
     world.setWestStoreOpen(snapshot.flags["episode.westStoreUnlocked"] === true);
     world.setTenantStudyOpen(snapshot.flags["episode.tenantStudyUnlocked"] === true);
     world.setEntryDoorOpen(snapshot.flags["episode.entryDoorOpened"] === true);
+    world.setTenantRoomDoorOpen(snapshot.flags["episode.dayTwoRoomDoorOpen"] === true);
     world.setArenRoomAvailable(snapshot.flags["episode.arenRoomAvailable"] === true);
     world.setArenRoomDoorOpen(
       snapshot.flags["episode.arenRoomChecked"] === true ||
@@ -154,16 +173,6 @@ export class EpisodeOne {
   }
 
   update(delta: number): void {
-    if (this.retreating) {
-      this.retreatElapsed += delta;
-      const amount = Math.min(1, this.retreatElapsed / 1.15);
-      const housemate = this.options.world.characters[0];
-      if (housemate) {
-        housemate.position.set(-0.82, 0, THREE.MathUtils.lerp(5.0, -7.25, amount));
-        housemate.rotation.y = Math.PI;
-      }
-      if (amount >= 1) this.retreating = false;
-    }
     if (
       this.options.story.hasFlag("episode.sundayMorning") &&
       this.options.story.hasFlag("episode.arenDoorKnocked") &&
@@ -183,6 +192,17 @@ export class EpisodeOne {
   }
 
   interact(id: string): void {
+    if (id === "tenant-portrait") {
+      this.discoverTenantPortrait();
+      return;
+    }
+    if (
+      ["tenant-ledger", "lease-copy", "sealed-note", "tenant-audio"].includes(id) &&
+      (this.options.story.value.day < 3 || !this.options.story.hasFlag("episode.housemateTrust"))
+    ) {
+      this.options.showToast("The tenant's records can wait until you and Zayan have a reason to search together.");
+      return;
+    }
     if (id === "entry-door-opened") {
       this.options.story.setFlag("episode.entryDoorOpened", true);
       this.options.saveCheckpoint();
@@ -301,7 +321,7 @@ export class EpisodeOne {
   }
 
   private registerEvents(): void {
-    const { events, story, world, characters, playTone } = this.options;
+    const { events, story, world, characters, cinematics, playTone } = this.options;
     events.register({
       id: "episode.first-hall-entry",
       position: new THREE.Vector3(0, 1.64, 5.1),
@@ -316,28 +336,72 @@ export class EpisodeOne {
       },
     });
     events.register({
-      id: "episode.first-aren-encounter",
-      position: new THREE.Vector3(0, 1.64, 5.05),
-      radius: 1.7,
+      id: "episode.day-two-blackout",
+      position: new THREE.Vector3(3.0, 1.64, -8.4),
+      radius: 1.85,
       condition: {
-        allFlags: ["episode.returnedFromWorkDay2"],
-        noFlags: ["episode.firstEncounterSeen"],
+        allFlags: ["episode.dayTwoVoiceHeard"],
+        noFlags: ["episode.dayTwoBlackoutSeen"],
+        minDay: 2,
+        maxDay: 2,
       },
       run: () => {
-        story.setFlag("episode.firstEncounterSeen", true);
+        const housematePosition = new THREE.Vector3(3.45, 0, -7.75);
+        story.setFlag("episode.dayTwoBlackoutStarted", true);
+        story.setFlag("episode.dayTwoRoomDoorOpen", true);
+        world.setTenantRoomDoorOpen(true);
+        world.setBlackout(true);
+        this.options.setBlackout(true);
         world.setMood("uneasy");
-        world.setDoorOpen(true);
-        playTone(82, 0.75, 0.065);
-        const aren = world.characters[0];
-        if (aren) {
-          aren.visible = true;
-          aren.position.set(-0.82, 0, 5.0);
-        }
-        this.retreatElapsed = 0;
-        this.retreating = true;
-        this.options.setObjective("The stranger hurried inside. Ask the tenant who they are.", OBJECTIVE_DESTINATIONS.reception);
-        this.options.showToast("A figure catches your eye, then slips quickly into the house.");
-        this.options.saveCheckpoint();
+        characters.spawn("housemate", housematePosition);
+        characters.place("housemate", housematePosition, -Math.PI / 2);
+        playTone(36, 0.9, 0.08);
+
+        const revealTarget = housematePosition.clone().add(new THREE.Vector3(0, 1.45, 0));
+        const cameraFov = this.options.player.camera.fov;
+        cinematics.play(
+          this.options.player.camera,
+          [
+            {
+              duration: 0.95,
+              position: this.options.player.camera.position.clone(),
+              lookAt: revealTarget,
+              fov: 56,
+            },
+            {
+              duration: 0.35,
+              position: this.options.player.camera.position.clone(),
+              lookAt: revealTarget,
+              fov: cameraFov,
+            },
+          ],
+          () => {
+            this.options.setBlackout(false);
+            this.options.player.captureCameraLook();
+            story.setFlag("episode.dayTwoBlackoutSeen", true);
+            story.setFlag("episode.firstEncounterSeen", true);
+            this.options.playTone(58, 0.5, 0.05);
+            this.say({
+              id: "episode-day-two-blackout",
+              lines: [
+                { speaker: "Zayan", text: "What happened? I heard something downstairs." },
+                { speaker: "You", text: "I saw the old portrait upstairs. Then I heard a voice from this room, and every light went out." },
+                { speaker: "Zayan", text: "That painting is the tenant's father. The face is almost exactly the same, just older. He always looked like he was trying not to laugh." },
+                { speaker: "You", text: "It felt like someone was standing behind me." },
+                { speaker: "Zayan", text: "I believe you. Go back to your room and rest. We can talk when the house is awake." },
+              ],
+              onComplete: () => {
+                story.setFlag("episode.housemateMet", true);
+                story.setFlag("episode.housemateTalks", 1);
+                this.options.setObjective(
+                  "Go upstairs to your room and rest after what happened.",
+                  OBJECTIVE_DESTINATIONS.upstairsBed,
+                );
+                this.options.saveCheckpoint();
+              },
+            });
+          },
+        );
       },
     });
     events.register({
@@ -345,7 +409,7 @@ export class EpisodeOne {
       position: new THREE.Vector3(0, 1.64, -7.0),
       radius: 1.8,
       condition: {
-        allFlags: ["episode.returnedFromWorkDay3"],
+        allFlags: ["episode.returnedFromWorkDay3", "episode.housemateTrust"],
         noFlags: ["episode.scoldingSeen"],
         minDay: 3,
         phases: ["evening"],
@@ -382,12 +446,12 @@ export class EpisodeOne {
         allFlags: [
           "episode.housemateMet",
           "episode.hallEntered",
-          "episode.tenantAskedAboutAren",
-          "episode.returnedFromWorkDay2",
+          "episode.dayTwoBlackoutSeen",
+          "episode.returnedFromWorkDay3",
         ],
         noFlags: ["episode.sawArenSweep", "episode.housemateTrust"],
-        minDay: 2,
-        maxDay: 2,
+        minDay: 3,
+        maxDay: 3,
         phases: ["evening"],
       },
       run: () => {
@@ -788,7 +852,23 @@ export class EpisodeOne {
           story.setFlag("episode.forbiddenDoorWarned", true);
           story.setFlag("episode.tenantTalks", count + 1);
           this.options.setObjective("Go upstairs to your room and rest after the journey.", OBJECTIVE_DESTINATIONS.upstairsBed);
-          this.options.saveCheckpoint();
+          this.playStairCue(() => {
+            this.options.player.captureCameraLook();
+            this.say({
+              id: "episode-stair-direction",
+              lines: [{
+                speaker: "Tenant",
+                text: "Go to your room upstairs. Get some rest; we can talk about the house tomorrow.",
+              }],
+              onComplete: () => {
+                this.options.setObjective(
+                  "Go upstairs to your room and rest after the journey.",
+                  OBJECTIVE_DESTINATIONS.upstairsBed,
+                );
+                this.options.saveCheckpoint();
+              },
+            });
+          });
         },
       });
       return;
@@ -1090,48 +1170,37 @@ export class EpisodeOne {
     }
     if (!story.hasFlag("episode.restedOnce")) {
       story.setFlag("episode.restedOnce", true);
-      this.advanceTo(2, "evening");
-      story.setFlag("episode.returnedFromWorkDay2", true);
-      this.options.world.setEntryDoorOpen(true);
-      this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
+      this.advanceTo(2, "morning");
+      story.setFlag("episode.dayTwoWake", true);
+      this.options.player.restore({ x: -4.15, y: 4.8, z: -2.9, yaw: 0 });
       await this.options.showInterstitial("day_1_complete");
-      this.options.transition("You wake before dawn, dress for work and leave. The office stays offscreen; an ordinary shift passes in a black cut. You return home after dark.");
-      this.options.setObjective("Enter the house. Someone is waiting near the front hall.", OBJECTIVE_DESTINATIONS.entry);
+      this.options.transition(
+        "You wake in your upstairs room. The old portrait on the wall looks unsettlingly familiar.",
+        "DAY 2 — MORNING",
+      );
+      this.options.setObjective(
+        "Look closely at the old portrait on your bedroom wall.",
+        OBJECTIVE_DESTINATIONS.tenantPortrait,
+      );
     } else if (
-      story.hasFlag("episode.tenantAskedAboutAren") &&
+      story.hasFlag("episode.dayTwoBlackoutSeen") &&
       !story.hasFlag("episode.returnedFromWorkDay3")
     ) {
-      if (
-        !story.hasFlag("episode.sawArenSweep") ||
-        !story.hasFlag("episode.bloodSeen") ||
-        !story.hasFlag("episode.secondHousemateTalk") ||
-        !story.hasFlag("episode.sharedTask")
-      ) {
-        this.options.showToast("Finish the laundry investigation with Zayan before turning in.");
-        this.options.setObjective(
-          story.hasFlag("episode.sharedTaskStarted")
-            ? "Turn the seized valve behind the laundry sink."
-            : story.hasFlag("episode.secondHousemateTalk")
-              ? "Return to the laundry with Zayan and trace the leak."
-              : story.hasFlag("episode.bloodSeen")
-                ? "Ask Zayan about the mark beneath the laundry sink."
-                : story.hasFlag("episode.sawArenSweep")
-                  ? "Inspect the dark mark beneath the laundry sink."
-                  : "Find Zayan in the laundry room.",
-          story.hasFlag("episode.sharedTaskStarted")
-            ? OBJECTIVE_DESTINATIONS.pipe
-            : OBJECTIVE_DESTINATIONS.laundry,
-        );
-        return;
-      }
       story.setFlag("episode.dayTwoRested", true);
       this.advanceTo(3, "evening");
       story.setFlag("episode.returnedFromWorkDay3", true);
       this.options.world.setEntryDoorOpen(true);
-      this.options.player.restore({ x: 0, y: 0, z: 5.1, yaw: 0 });
+      this.options.player.resetInput();
+      this.options.player.restore({ x: 0, y: 0, z: 2.2, yaw: 0 });
       await this.options.showInterstitial("day_2_complete");
-      this.options.transition("Day three. You wake, go through another ordinary shift, and return to the house after dark. Before you reach the stairs, you hear the tenant shouting at Zayan.");
-      this.options.setObjective("Go through the hall. The tenant's voice is raised.", OBJECTIVE_DESTINATIONS.arenDining);
+      this.options.transition(
+        "You follow Zayan's advice and return to your room. After an uneasy night and an ordinary shift, you come home the following evening.",
+        "DAY 3 — EVENING",
+      );
+      this.options.setObjective(
+        "Find Zayan in the laundry room and see what he was cleaning.",
+        OBJECTIVE_DESTINATIONS.laundry,
+      );
     } else if (story.hasFlag("episode.planMade") && story.value.day === 3) {
       story.setFlag("episode.sundayMorning", true);
       this.advanceTo(4, "morning");
@@ -1274,24 +1343,32 @@ export class EpisodeOne {
               player.camera,
               [
                 {
-                  duration: 3.4,
+                  duration: 2.8,
                   position: mobileFraming
-                    ? new THREE.Vector3(0.1, 5.25, -21.85)
-                    : new THREE.Vector3(-2.25, 5.12, -23.55),
+                    ? new THREE.Vector3(-1.35, 5.12, -22.45)
+                    : new THREE.Vector3(-2.25, 5.08, -22.75),
                   lookAt: mobileFraming
-                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.95, 0))
+                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.78, 0))
                     : monster,
-                  fov: mobileFraming ? 60 : 52,
+                  fov: mobileFraming ? 52 : 54,
                 },
                 {
-                  duration: 2.4,
+                  duration: 3.1,
                   position: mobileFraming
-                    ? new THREE.Vector3(0.15, 5.05, -21.9)
-                    : new THREE.Vector3(0.25, 4.72, -22.7),
+                    ? new THREE.Vector3(0.75, 5.03, -22.05)
+                    : new THREE.Vector3(1.05, 5.02, -22.3),
                   lookAt: mobileFraming
-                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.9, 0))
-                    : new THREE.Vector3(0.65, 4.15, -26.2),
-                  fov: mobileFraming ? 58 : 48,
+                    ? world.entity.position.clone().add(new THREE.Vector3(0, 1.8, 0))
+                    : world.entity.position.clone().add(new THREE.Vector3(0, 1.8, 0)),
+                  fov: mobileFraming ? 48 : 46,
+                },
+                {
+                  duration: 2.6,
+                  position: mobileFraming
+                    ? new THREE.Vector3(0.08, 4.96, -22.28)
+                    : new THREE.Vector3(0.08, 4.94, -22.42),
+                  lookAt: world.entity.position.clone().add(new THREE.Vector3(0, 1.8, 0)),
+                  fov: mobileFraming ? 41 : 38,
                 },
               ],
               () => {
@@ -1333,6 +1410,76 @@ export class EpisodeOne {
       title: "THE OPEN DOOR",
       text: "The tenant backs away, still holding the room key. Behind you, the house settles around a shape it already knows. Nothing in the hallway is empty now.",
     };
+  }
+
+  private discoverTenantPortrait(): void {
+    const { story } = this.options;
+    if (!story.hasFlag("episode.dayTwoWake")) {
+      this.options.showToast("The old portrait can wait until morning.");
+      return;
+    }
+    if (story.hasFlag("episode.dayTwoPortraitSeen")) {
+      this.options.showToast("The painted eyes seem to follow you.");
+      return;
+    }
+
+    story.discover("episode.clue.tenant-portrait");
+    story.setFlag("episode.dayTwoPortraitSeen", true);
+    story.setFlag("episode.suspicionStarted", true);
+    this.options.world.setMood("uneasy");
+    this.options.playTone(73, 0.65, 0.045);
+    this.say({
+      id: "episode-tenant-portrait",
+      lines: [{
+        speaker: "You",
+        text: "A caption identifies the tenant's father. His lopsided moustache and solemn, mismatched eyebrows make him look almost funny—and the resemblance to the tenant is impossible to miss.",
+      }],
+      onComplete: () => this.playStairCue(() => {
+        this.options.player.captureCameraLook();
+        this.say({
+          id: "episode-day-two-voice",
+          lines: [{
+            speaker: "The house",
+            text: "A voice murmurs from downstairs, somewhere near the tenant's bedroom. Then a sharp click cuts it off.",
+          }],
+          onComplete: () => {
+            story.setFlag("episode.dayTwoVoiceHeard", true);
+            this.options.setObjective(
+              "Go downstairs to the tenant's room and find out who made that sound.",
+              OBJECTIVE_DESTINATIONS.tenantRoom,
+            );
+            this.options.saveCheckpoint();
+          },
+        });
+      }),
+    });
+  }
+
+  private playStairCue(completion: () => void): void {
+    const { cinematics, player } = this.options;
+    const camera = player.camera;
+    const origin = camera.position.clone();
+    const cameraFov = camera.fov;
+    const stairLanding = new THREE.Vector3(4.55, 3.25, 0.45);
+    const pushIn = origin.clone().lerp(stairLanding, 0.14);
+    cinematics.play(
+      camera,
+      [
+        {
+          duration: 0.95,
+          position: pushIn,
+          lookAt: new THREE.Vector3(4.55, 1.65, 2.45),
+          fov: 66,
+        },
+        {
+          duration: 1.1,
+          position: origin,
+          lookAt: stairLanding,
+          fov: cameraFov,
+        },
+      ],
+      completion,
+    );
   }
 
   private advanceTo(day: number, phase: DayPhase): void {

@@ -78,6 +78,18 @@ const OBJECTIVE_COPY: Record<string, { label: string; hint: string }> = {
     label: "Rest in your room.",
     hint: "Your bedroom is at the top of the stairs; interact with the bed.",
   },
+  "Look closely at the old portrait on your bedroom wall.": {
+    label: "Study the old portrait.",
+    hint: "The framed painting is on the wall across from your bed.",
+  },
+  "Go downstairs to the tenant's room and find out who made that sound.": {
+    label: "Find the voice downstairs.",
+    hint: "Follow the stairs down, then open the door into the tenant's ground-floor room.",
+  },
+  "Go upstairs to your room and rest after what happened.": {
+    label: "Rest after the blackout.",
+    hint: "Return to the bedroom upstairs and interact with the bed.",
+  },
   "Find Zayan in the laundry room and see what he was cleaning.": {
     label: "Find Zayan in the laundry room.",
     hint: "Follow the hall to the west-side laundry door.",
@@ -194,6 +206,7 @@ export class Game {
   private readonly toast = required<HTMLElement>("#toast");
   private readonly screenReaderStatus = required<HTMLElement>("#screen-reader-status");
   private readonly travelTransition = required<HTMLElement>("#travel-transition");
+  private readonly blackoutOverlay = required<HTMLElement>("#blackout-overlay");
   private readonly travelTransitionTitle = required<HTMLElement>("#travel-transition-title");
   private readonly travelTransitionCopy = required<HTMLElement>("#travel-transition-copy");
   private readonly creatorDialog = document.querySelector<HTMLDialogElement>("#creator-dialog");
@@ -217,6 +230,7 @@ export class Game {
   private autosaveTime = 0;
   private elapsed = 0;
   private lastFrame = 0;
+  private lastRenderAt = 0;
   private objectiveTarget: THREE.Vector3 | null = null;
   private currentHint = "Follow the objective marker and look for objects with an interaction prompt.";
   private readonly objectiveToTarget = new THREE.Vector3();
@@ -293,6 +307,7 @@ export class Game {
       cinematics: this.cinematics,
       world: this.world,
       playTone: (frequency, duration, volume) => this.audio.playTone(frequency, duration, volume),
+      setBlackout: (active) => this.setBlackout(active),
       setObjective: (objective, destination) => this.setObjective(objective, destination),
       showToast: (message) => this.showToast(message),
       saveCheckpoint: () => this.saveCheckpoint(false),
@@ -438,8 +453,8 @@ export class Game {
   private readonly frame = (now: number): void => {
     const delta = Math.min((now - this.lastFrame) / 1000, 0.05);
     this.lastFrame = now;
-    this.updateRenderQuality(delta);
-    if (!this.platformPaused && !this.advertisementPaused) this.world.update(delta);
+    if (this.isPlaying) this.updateRenderQuality(delta);
+    if (this.isPlaying && !this.platformPaused && !this.advertisementPaused) this.world.update(delta);
 
     if (
       !this.platformPaused &&
@@ -470,14 +485,17 @@ export class Game {
       this.characters.update(delta, this.elapsed);
     }
 
-    if (!this.platformPaused && !this.advertisementPaused) {
+    if (this.isPlaying && !this.platformPaused && !this.advertisementPaused) {
       this.cinematics.update(delta);
       this.episode.update(delta);
       this.environment.update(delta, this.elapsed);
     }
     this.hud.classList.toggle("is-cinematic-active", this.cinematics.active);
-    this.world.updateStreaming();
-    this.renderer.render(this.world.scene, this.player.camera);
+    if (this.isPlaying || now - this.lastRenderAt >= 1000 / 30) {
+      if (this.isPlaying) this.world.updateStreaming();
+      this.renderer.render(this.world.scene, this.player.camera);
+      this.lastRenderAt = now;
+    }
     if (this.platformInitialized && !this.readyMessageSent) {
       this.readyMessageSent = true;
       this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.GAME_READY);
@@ -496,6 +514,8 @@ export class Game {
     this.world.setBedroomDoorOpen(false);
     this.world.setFinalDoorOpen(false);
     this.world.setEntryDoorOpen(false);
+    this.world.setTenantRoomDoorOpen(false);
+    this.setBlackout(false);
     this.world.setWestStoreOpen(false);
     this.world.setTenantStudyOpen(false);
     this.world.setArenRoomAvailable(false);
@@ -522,6 +542,7 @@ export class Game {
 
   private async continueGame(): Promise<void> {
     await this.audio.start();
+    this.setBlackout(false);
     const snapshot = this.saves.load();
     if (!snapshot) {
       this.showToast("No usable checkpoint was found.");
@@ -534,7 +555,15 @@ export class Game {
     this.world.setBackRoomDoorOpen(snapshot.flags["foundation.backRoomDoorOpen"] === true);
     this.episode.restore(snapshot);
     const savedObjective = snapshot.flags["episode.objective"];
-    if (typeof savedObjective === "string") {
+    if (
+      this.story.hasFlag("episode.dayTwoWake") &&
+      !this.story.hasFlag("episode.dayTwoPortraitSeen")
+    ) {
+      this.setObjective(
+        "Look closely at the old portrait on your bedroom wall.",
+        new THREE.Vector3(-4.15, 5.18, -4.82),
+      );
+    } else if (typeof savedObjective === "string") {
       this.setObjective(savedObjective, parseObjectiveTarget(snapshot.flags["episode.objectiveTarget"]));
     }
     await this.enterGame();
@@ -890,17 +919,23 @@ export class Game {
     }, 3600);
   }
 
+  private setBlackout(active: boolean): void {
+    this.world.setBlackout(active);
+    this.blackoutOverlay.classList.toggle("is-active", active);
+  }
+
   private resize(): void {
     const width = Math.max(1, window.innerWidth);
     const height = Math.max(1, window.innerHeight);
     this.mobileQuality = window.matchMedia("(pointer: coarse)").matches;
     this.lowPowerQuality = this.mobileQuality || navigator.hardwareConcurrency <= 4;
     this.renderer.shadowMap.enabled = !this.lowPowerQuality && !this.adaptiveShadowsDisabled;
-    const pixelBudget = this.lowPowerQuality ? 2_621_440 : 4_194_304;
+    document.documentElement.dataset.renderProfile = this.lowPowerQuality ? "efficient" : "balanced";
+    const pixelBudget = this.lowPowerQuality ? 3_145_728 : 6_291_456;
     const pixelBudgetRatio = Math.sqrt(pixelBudget / (width * height));
     this.pixelRatioCeiling = Math.min(
       window.devicePixelRatio || 1,
-      this.lowPowerQuality ? 1.25 : 1.5,
+      this.lowPowerQuality ? 1.35 : 1.75,
       pixelBudgetRatio,
     );
     const startingPixelRatio = this.lowPowerQuality ? 1 : this.pixelRatioCeiling;
@@ -916,42 +951,39 @@ export class Game {
     this.qualityElapsed += delta;
     this.qualityFrameTime += delta;
     this.qualityFrames += 1;
-    if (this.qualityElapsed < 1.5) return;
+    if (this.qualityElapsed < 1.25) return;
 
     const averageFrameTime = this.qualityFrameTime / this.qualityFrames;
     this.qualityElapsed = 0;
     this.qualityFrameTime = 0;
     this.qualityFrames = 0;
 
-    const frameTimeLimit = this.mobileQuality ? 0.022 : 0.018;
-    const pixelRatioFloor = 0.75;
-    if (averageFrameTime > frameTimeLimit && !this.mobileQuality && this.renderer.shadowMap.enabled) {
+    const frameTimeLimit = this.mobileQuality ? 0.024 : 0.020;
+    const pixelRatioFloor = this.lowPowerQuality ? 0.82 : 0.78;
+    if (averageFrameTime > frameTimeLimit) {
       this.qualityRecoveryElapsed = 0;
-      this.adaptiveShadowsDisabled = true;
-      this.renderer.shadowMap.enabled = false;
-      return;
-    }
-    if (averageFrameTime > frameTimeLimit && this.pixelRatio > pixelRatioFloor) {
-      this.qualityRecoveryElapsed = 0;
-      this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.15);
-      this.applyRenderScale(window.innerWidth, window.innerHeight);
-      return;
-    }
-    if (averageFrameTime < 0.017 && this.pixelRatio < this.pixelRatioCeiling) {
-      this.qualityRecoveryElapsed += 1.5;
-      if (this.qualityRecoveryElapsed >= 9) {
-        this.qualityRecoveryElapsed = 0;
-        this.pixelRatio = Math.min(this.pixelRatioCeiling, this.pixelRatio + 0.05);
+      if (!this.lowPowerQuality && this.renderer.shadowMap.enabled) {
+        this.adaptiveShadowsDisabled = true;
+        this.renderer.shadowMap.enabled = false;
+        return;
+      }
+      if (this.pixelRatio > pixelRatioFloor) {
+        this.pixelRatio = Math.max(pixelRatioFloor, this.pixelRatio - 0.08);
         this.applyRenderScale(window.innerWidth, window.innerHeight);
       }
       return;
     }
-    if (averageFrameTime < 0.0155 && this.adaptiveShadowsDisabled) {
-      this.qualityRecoveryElapsed += 1.5;
-      if (this.qualityRecoveryElapsed >= 9) {
+    if (averageFrameTime < frameTimeLimit * 0.78) {
+      this.qualityRecoveryElapsed += 1.25;
+      if (this.qualityRecoveryElapsed >= 7.5) {
         this.qualityRecoveryElapsed = 0;
-        this.adaptiveShadowsDisabled = false;
-        this.renderer.shadowMap.enabled = !this.mobileQuality;
+        if (this.pixelRatio < this.pixelRatioCeiling) {
+          this.pixelRatio = Math.min(this.pixelRatioCeiling, this.pixelRatio + 0.04);
+          this.applyRenderScale(window.innerWidth, window.innerHeight);
+        } else if (this.adaptiveShadowsDisabled && !this.lowPowerQuality) {
+          this.adaptiveShadowsDisabled = false;
+          this.renderer.shadowMap.enabled = true;
+        }
       }
       return;
     }
