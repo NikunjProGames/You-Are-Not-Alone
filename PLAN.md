@@ -59,7 +59,7 @@
 - [x] Establish fire loss, financial pressure, job, unusually cheap rental, outside arrival, check-in, upstairs rest, and offscreen work transitions.
 - [~] Implement multiple suspicious encounters/clues involving Zayan, the distinct first strange person. Day 2 now uses the tenant-father portrait, a voice, a blackout, and a shared encounter; Day 3 carries the stain, leak repair, trust, and tenant-scolding chain before records. Fresh-play progression and recovery validation remain.
 - [~] Implement a separate post-trust tenant investigation with behavior, clues, contradictions, and confrontation. The complete evidence chain remains to be fresh-play tested.
-- [~] Implement the Day 3 plan, red Sunday/Day 4 title card, room check and disappearance, stone-gated forbidden door, transformation, canonical line, and three state-based ending cards. Full finale and each variant remain unverified.
+- [~] Implement the Day 3 plan, red Sunday/Day 4 title card, room check and disappearance, stone-gated forbidden door, transformation, canonical line, and three clue-dependent memory reflections followed by a cinematic Episode 2 continuation card. Full fresh-playthrough, finale, and variant verification remain outstanding.
 - [~] Include door-detail meshes in their interaction targets so decorative insets do not occlude prompts. Controlled checks confirmed front-door focus, opening, and passage; test every route in a foreground playthrough.
 - [ ] Reach and measure 30–45 minutes of meaningful first-playthrough content without traversal padding; up to an hour is acceptable for slower exploration.
 
@@ -72,7 +72,7 @@
 
 ## Phase 5 — Story validation, bug fixing, and release QA (not complete)
 
-- Fresh-play the complete narrative through every ending in a foreground browser; the existing smoke harness suspended its animation-frame loop when backgrounded.
+- Fresh-play the complete narrative using ordinary player controls through all three memory-reflection variants in a foreground browser; the scripted state progression does not verify physical navigation or pacing.
 - Test exploration order, optional/missed clues, event repetition, story gates, dialogue choices, both floors, doors, save/reload, and interruption/recovery around cinematics.
 - Rerun typecheck, production build, and diff checks after the latest door interaction-target fix; verify static-host subpath, browser console, asset loading, controls, and representative desktop/mobile performance.
 - Fix progression blockers and major presentation faults; a successful build alone is not release readiness.

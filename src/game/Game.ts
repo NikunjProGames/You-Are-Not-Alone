@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import bridge from "@playgama/bridge";
 import type { Conversation, DayPhase, StorySnapshot } from "./types";
-import { EpisodeOne, type EpisodeEnding } from "./content/EpisodeOne";
+import { EpisodeOne } from "./content/EpisodeOne";
 import { AudioSystem } from "./systems/AudioSystem";
 import { CharacterSystem } from "./systems/CharacterSystem";
 import { CinematicSystem } from "./systems/CinematicSystem";
@@ -227,6 +227,8 @@ export class Game {
   private isPlaying = false;
   private toastTimeout = 0;
   private travelTransitionTimeout = 0;
+  private endingTextTimeout = 0;
+  private endingReplayTimeout = 0;
   private autosaveTime = 0;
   private elapsed = 0;
   private lastSimulationAt = 0;
@@ -314,7 +316,7 @@ export class Game {
       saveCheckpoint: () => this.saveCheckpoint(false),
       transition: (message, title) => this.showTravelTransition(message, title),
       showInterstitial: (placement) => this.showInterstitial(placement),
-      showEnding: (ending) => this.showEnding(ending),
+      showEnding: () => this.showEnding(),
     });
     this.setupUi();
     this.resize();
@@ -438,6 +440,8 @@ export class Game {
       if (event.target.closest("button")) this.audio.playUiClick();
     }, true);
     this.endingReplayButton.addEventListener("click", () => {
+      window.clearTimeout(this.endingTextTimeout);
+      window.clearTimeout(this.endingReplayTimeout);
       this.endingScreen.hidden = true;
       void this.beginNewGame();
     });
@@ -894,10 +898,22 @@ export class Game {
     this.objectiveDirection.hidden = false;
   }
 
-  private showEnding(ending: EpisodeEnding): void {
-    this.endingTitle.textContent = ending.title;
-    this.endingCopy.textContent = ending.text;
+  private showEnding(): void {
+    window.clearTimeout(this.endingTextTimeout);
+    window.clearTimeout(this.endingReplayTimeout);
+    this.endingTitle.textContent = "TO BE CONTINUED";
+    this.endingCopy.textContent = "IN EPISODE TWO";
+    this.endingReplayButton.hidden = true;
     this.endingScreen.hidden = false;
+    this.endingScreen.classList.remove("is-fading", "is-copy-visible");
+    void this.endingScreen.offsetWidth;
+    this.endingScreen.classList.add("is-fading");
+    this.endingTextTimeout = window.setTimeout(() => {
+      this.endingScreen.classList.add("is-copy-visible");
+    }, 3200);
+    this.endingReplayTimeout = window.setTimeout(() => {
+      this.endingReplayButton.hidden = false;
+    }, 5600);
     this.isPlaying = false;
     document.body.style.overflow = "";
     this.player.setLookEnabled(false);

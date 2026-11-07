@@ -31,6 +31,7 @@ The door leads into a controlled cinematic. The camera changes perspective; the 
 **"You are not alone."**
 
 Episode 1 ends shortly afterward. At least three meaningful ending variations must preserve this reveal and exact line.
+The finale includes the protagonist asking **"Remember me?"** before the canonical final line. It then fades to black and displays **"TO BE CONTINUED — IN EPISODE TWO"** without revealing Episode 2 plot details. The three ending variations are clue-dependent dialogue reflections, not separate contradictory outcomes.
 
 Target approximately 30–45 minutes over 3–4 in-game days, with up to an hour acceptable for slower exploration. The job establishes ordinary life and financial pressure; it is not a full work simulator.
 

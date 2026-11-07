@@ -8,8 +8,7 @@ import type { HouseDemo } from "../world/HouseDemo";
 import type { Player } from "../world/Player";
 
 export interface EpisodeEnding {
-  title: string;
-  text: string;
+  memory: string;
 }
 
 interface EpisodeOneOptions {
@@ -26,7 +25,7 @@ interface EpisodeOneOptions {
   saveCheckpoint: () => void;
   transition: (message: string, title?: string) => void;
   showInterstitial: (placement: string) => Promise<void>;
-  showEnding: (ending: EpisodeEnding) => void;
+  showEnding: () => void;
 }
 
 const FINAL_ROOM_CENTER = new THREE.Vector3(0, 4.8, -24.7);
@@ -1407,9 +1406,11 @@ export class EpisodeOne {
                     { speaker: "Zayan", text: "You came." },
                     { speaker: "Tenant", text: "I kept the rooms occupied so it would have somewhere to go." },
                     { speaker: "You", text: "The doors. The sounds. The marks on the walls. I was here before I arrived." },
+                    { speaker: "You", text: outcome.memory },
+                    { speaker: "You", text: "Remember me?" },
                     { speaker: "You", text: "You are not alone." },
                   ],
-                  onComplete: () => this.options.showEnding(outcome),
+                  onComplete: () => this.options.showEnding(),
                 });
               },
             );
@@ -1423,19 +1424,16 @@ export class EpisodeOne {
     const count = snapshot.discoveries.length;
     if (snapshot.flags["episode.helpedAren"] === true && snapshot.flags["episode.fireEchoFound"] === true) {
       return {
-        title: "THE HOUSE REMEMBERS",
-        text: "Zayan's warning was meant to protect you. The fire was not the beginning. You leave the room with the truth—and the sound of a second set of footsteps.",
+        memory: "The fire wasn't the beginning. I remember now.",
       };
     }
     if (count >= 8 && snapshot.flags["episode.tenantConfronted"] === true) {
       return {
-        title: "THE RECORD",
-        text: "You keep every clue. The tenant recognizes the pattern in your notes before you can explain it. Outside, the rain carries your reflection away from you.",
+        memory: "Every room kept a trace of me.",
       };
     }
     return {
-      title: "THE OPEN DOOR",
-      text: "The tenant backs away, still holding the room key. Behind you, the house settles around a shape it already knows. Nothing in the hallway is empty now.",
+      memory: "I remember this house. I was here before.",
     };
   }
 
