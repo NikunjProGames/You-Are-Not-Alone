@@ -889,7 +889,12 @@ export class EpisodeOne {
       });
       return;
     }
-    if (story.hasFlag("episode.firstEncounterSeen") && !story.hasFlag("episode.tenantAskedAboutAren")) {
+    if (
+      story.hasFlag("episode.firstEncounterSeen") &&
+      !story.hasFlag("episode.tenantAskedAboutAren") &&
+      !story.hasFlag("episode.tenantLedger") &&
+      !story.hasFlag("episode.tenantRecording")
+    ) {
       this.say({
         id: "episode-ask-tenant-about-aren",
         lines: [

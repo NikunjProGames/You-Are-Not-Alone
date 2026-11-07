@@ -40,6 +40,7 @@ export class EventDirector {
         this.story.completeEvent(event.id);
       }
       event.run();
+      return;
     }
   }
 }

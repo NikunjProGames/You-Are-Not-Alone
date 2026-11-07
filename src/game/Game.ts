@@ -229,12 +229,14 @@ export class Game {
   private travelTransitionTimeout = 0;
   private autosaveTime = 0;
   private elapsed = 0;
-  private lastFrame = 0;
+  private lastSimulationAt = 0;
   private lastRenderAt = 0;
   private objectiveTarget: THREE.Vector3 | null = null;
   private currentHint = "Follow the objective marker and look for objects with an interaction prompt.";
   private readonly objectiveToTarget = new THREE.Vector3();
   private readonly objectiveForward = new THREE.Vector3();
+  private readonly activeRenderInterval = 1000 / 60;
+  private readonly idleRenderInterval = 1000 / 30;
   private pixelRatio = 0;
   private pixelRatioCeiling = 1;
   private qualityElapsed = 0;
@@ -445,24 +447,26 @@ export class Game {
     window.addEventListener("beforeunload", () => {
       if (this.isPlaying && !this.dialogues.isActive && !this.cinematics.active) this.saveCheckpoint();
     });
-    this.lastFrame = performance.now();
+    this.lastSimulationAt = performance.now();
     requestAnimationFrame(this.frame);
   }
 
   private readonly frame = (now: number): void => {
-    const delta = Math.min((now - this.lastFrame) / 1000, 0.05);
-    this.lastFrame = now;
-    if (this.isPlaying) this.updateRenderQuality(delta);
-    if (this.isPlaying && !this.platformPaused && !this.advertisementPaused) this.world.update(delta);
-
-    if (
+    const gameAdvancing =
+      this.isPlaying &&
       !this.platformPaused &&
       !this.advertisementPaused &&
-      this.isPlaying &&
       this.pauseScreen.hidden &&
       this.inspectionPanel.hidden &&
-      this.travelTransition.hidden
-    ) {
+      this.travelTransition.hidden;
+    if (!gameAdvancing) this.lastSimulationAt = now;
+    const shouldAdvance = gameAdvancing && now - this.lastSimulationAt >= this.activeRenderInterval;
+    if (shouldAdvance) {
+      const delta = Math.min((now - this.lastSimulationAt) / 1000, 0.05);
+      this.lastSimulationAt = now;
+      this.updateRenderQuality(delta);
+      this.world.update(delta);
+
       this.elapsed += delta;
       this.player.update(
         delta,
@@ -482,16 +486,17 @@ export class Game {
         if (this.autosaveTime > 55) this.saveCheckpoint(false);
       }
       this.characters.update(delta, this.elapsed);
-    }
 
-    if (this.isPlaying && !this.platformPaused && !this.advertisementPaused) {
       this.cinematics.update(delta);
       this.episode.update(delta);
       this.environment.update(delta, this.elapsed);
     }
     this.hud.classList.toggle("is-cinematic-active", this.cinematics.active);
-    if (this.isPlaying || now - this.lastRenderAt >= 1000 / 30) {
-      if (this.isPlaying) this.world.updateStreaming();
+    const renderInterval = this.isPlaying
+      ? this.activeRenderInterval
+      : this.idleRenderInterval;
+    if ((gameAdvancing || !this.isPlaying) && now - this.lastRenderAt >= renderInterval) {
+      if (gameAdvancing) this.world.updateStreaming();
       this.renderer.render(this.world.scene, this.player.camera);
       this.lastRenderAt = now;
     }

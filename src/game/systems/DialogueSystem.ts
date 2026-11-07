@@ -7,6 +7,7 @@ export class DialogueSystem {
   private readonly choices = required<HTMLElement>("#dialogue-choices");
   private readonly continueButton = required<HTMLButtonElement>("#dialogue-continue");
   private active: Conversation | null = null;
+  private readonly pending: Conversation[] = [];
   private lineIndex = 0;
   private onActiveChange: (active: boolean) => void = () => {};
 
@@ -28,6 +29,14 @@ export class DialogueSystem {
   }
 
   start(conversation: Conversation): void {
+    if (this.active || this.pending.length > 0) {
+      this.pending.push(conversation);
+      return;
+    }
+    this.begin(conversation);
+  }
+
+  private begin(conversation: Conversation): void {
     this.active = conversation;
     this.lineIndex = 0;
     this.panel.hidden = false;
@@ -42,6 +51,10 @@ export class DialogueSystem {
     this.panel.hidden = true;
     this.onActiveChange(false);
     completed.onComplete?.();
+    if (!this.active) {
+      const next = this.pending.shift();
+      if (next) this.begin(next);
+    }
   }
 
   advance(): void {
