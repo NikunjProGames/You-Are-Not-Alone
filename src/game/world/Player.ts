@@ -16,10 +16,8 @@ export class Player {
   private readonly keys = new Set<string>();
   private touchX = 0;
   private touchY = 0;
-  private locked = false;
   private lookEnabled = false;
   private readonly onLookChange: () => void;
-  private readonly onPointerLockLost: () => void;
   private readonly canvas: HTMLCanvasElement;
   private readonly mobileControls: HTMLElement;
   private readonly joystick: HTMLElement;
@@ -32,10 +30,9 @@ export class Player {
   private lastTouchX = 0;
   private lastTouchY = 0;
 
-  constructor(canvas: HTMLCanvasElement, onLookChange: () => void, onPointerLockLost: () => void) {
+  constructor(canvas: HTMLCanvasElement, onLookChange: () => void) {
     this.canvas = canvas;
     this.onLookChange = onLookChange;
-    this.onPointerLockLost = onPointerLockLost;
     this.mobileControls = required("#mobile-controls");
     this.joystick = required("#move-pad");
     this.knob = required(".move-knob");
@@ -55,12 +52,6 @@ export class Player {
       this.draggingMouse = false;
       this.lookPointer = null;
     });
-    document.addEventListener("pointerlockchange", () => {
-      const wasLocked = this.locked;
-      this.locked = document.pointerLockElement === this.canvas;
-      this.mobileControls.hidden = this.isDesktopInput();
-      if (wasLocked && !this.locked && this.lookEnabled) this.onPointerLockLost();
-    });
     window.addEventListener("mousedown", (event) => {
       if (
         !this.lookEnabled ||
@@ -73,15 +64,13 @@ export class Player {
       this.lastMouseX = event.clientX;
       this.lastMouseY = event.clientY;
       event.preventDefault();
-      this.requestPointerLock();
     });
     window.addEventListener("mouseup", (event) => {
       if (event.button === 0) this.draggingMouse = false;
     });
     window.addEventListener("mousemove", (event) => {
       if (!this.lookEnabled) return;
-      if (this.locked) this.rotate(event.movementX, event.movementY);
-      else if (this.draggingMouse) {
+      if (this.draggingMouse) {
         const dx = event.clientX - this.lastMouseX;
         const dy = event.clientY - this.lastMouseY;
         this.lastMouseX = event.clientX;
@@ -92,7 +81,6 @@ export class Player {
     window.addEventListener("pointermove", (event) => {
       if (
         !this.lookEnabled ||
-        this.locked ||
         event.pointerType === "mouse" ||
         event.pointerId !== this.lookPointer
       ) {
@@ -102,8 +90,7 @@ export class Player {
       const dy = event.clientY - this.lastTouchY;
       this.lastTouchX = event.clientX;
       this.lastTouchY = event.clientY;
-      const sensitivity = event.pointerType === "mouse" ? 1 : 1.7;
-      this.rotate(dx * sensitivity, dy * sensitivity);
+      this.rotate(dx * 1.7, dy * 1.7);
     });
     window.addEventListener("pointerup", this.releaseLook);
     window.addEventListener("pointercancel", this.releaseLook);
@@ -111,10 +98,6 @@ export class Player {
     window.addEventListener("resize", () => this.updateInputMode());
     this.setupTouchControls();
     this.updateInputMode();
-  }
-
-  get pointerLocked(): boolean {
-    return this.locked;
   }
 
   getInput(): PlayerInput {
@@ -169,9 +152,8 @@ export class Player {
   }
 
   rotate(deltaX: number, deltaY: number): void {
-    const sensitivity = this.locked ? 0.0021 : 0.0034;
-    this.yaw -= deltaX * sensitivity;
-    this.pitch -= deltaY * sensitivity;
+    this.yaw -= deltaX * 0.0034;
+    this.pitch -= deltaY * 0.0034;
     this.pitch = THREE.MathUtils.clamp(this.pitch, -1.27, 1.27);
     this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     this.onLookChange();
@@ -195,20 +177,6 @@ export class Player {
     this.pitch = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
   }
 
-  requestPointerLock(): void {
-    if (!window.matchMedia("(pointer: fine)").matches || this.locked) return;
-    try {
-      const request = this.canvas.requestPointerLock();
-      if (request instanceof Promise) {
-        void request.catch((error: unknown) => {
-          console.info("Pointer lock unavailable; drag-to-look remains active.", error);
-        });
-      }
-    } catch (error) {
-      console.info("Pointer lock unavailable; drag-to-look remains active.", error);
-    }
-  }
-
   focusCanvas(): void {
     this.canvas.focus({ preventScroll: true });
   }
@@ -229,10 +197,6 @@ export class Player {
     this.touchX = 0;
     this.touchY = 0;
     this.knob.style.transform = "translate(0, 0)";
-  }
-
-  releasePointerLock(): void {
-    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
   }
 
   private setupTouchControls(): void {

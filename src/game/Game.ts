@@ -270,7 +270,6 @@ export class Game {
     this.player = new Player(
       canvas,
       () => this.interactions?.clearFocus(),
-      () => this.pause(),
     );
     this.world = buildHouseDemo(
       this.environment,
@@ -349,7 +348,6 @@ export class Game {
           this.platformPaused || this.advertisementPaused,
         );
         if (paused) {
-          this.player.releasePointerLock();
           void this.saveCheckpoint(false);
         } else {
           this.restorePlayerAfterPause();
@@ -393,7 +391,6 @@ export class Game {
     this.travelTransition.hidden = false;
     this.player.resetInput();
     this.player.setLookEnabled(false);
-    this.player.releasePointerLock();
     this.travelTransition.classList.remove("travel-transition");
     this.travelTransition.classList.remove("day-title-card");
     void this.travelTransition.offsetWidth;
@@ -409,12 +406,10 @@ export class Game {
     this.continueButton.hidden = !this.saves.hasSave();
     this.startButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
-      this.player.requestPointerLock();
       void this.beginNewGame();
     });
     this.continueButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
-      this.player.requestPointerLock();
       void this.continueGame();
     });
     this.pauseButton.addEventListener("click", () => this.pause());
@@ -607,7 +602,6 @@ export class Game {
       this.hud.classList.toggle("is-dialogue-active", active);
       if (active) {
         this.player.setLookEnabled(false);
-        this.player.releasePointerLock();
         this.interactions.clearFocus();
       } else this.restorePlayerAfterPause();
     });
@@ -624,7 +618,6 @@ export class Game {
     this.inspectionPanel.hidden = false;
     this.interactions.clearFocus();
     this.player.setLookEnabled(false);
-    this.player.releasePointerLock();
     this.saveCheckpoint(false);
     this.objectiveDirection.hidden = true;
   }
@@ -651,7 +644,6 @@ export class Game {
     }
     this.pauseScreen.hidden = false;
     this.player.setLookEnabled(false);
-    this.player.releasePointerLock();
     this.interactions.clearFocus();
     this.objectiveDirection.hidden = true;
     this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_PAUSED);
@@ -789,7 +781,6 @@ export class Game {
     );
     if (paused) {
       this.player.setLookEnabled(false);
-      this.player.releasePointerLock();
       if (this.isPlaying) {
         this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_PAUSED);
         void this.saveCheckpoint(false);
@@ -817,7 +808,6 @@ export class Game {
     }
     this.player.setLookEnabled(true);
     this.player.focusCanvas();
-    this.player.requestPointerLock();
   }
 
   private revealHint(isFreeFallback: boolean): void {
@@ -922,7 +912,6 @@ export class Game {
     this.isPlaying = false;
     document.body.style.overflow = "";
     this.player.setLookEnabled(false);
-    this.player.releasePointerLock();
     this.interactions.clearFocus();
     this.hud.hidden = true;
     this.sendPlatformMessage(bridge.PLATFORM_MESSAGE.LEVEL_COMPLETED);

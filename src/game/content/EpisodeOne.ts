@@ -365,7 +365,6 @@ export class EpisodeOne {
         story.setFlag("episode.dayTwoBlackoutStarted", true);
         story.setFlag("episode.dayTwoRoomDoorOpen", true);
         world.setTenantRoomDoorOpen(true);
-        world.setBlackout(true);
         this.options.setBlackout(true);
         world.setMood("uneasy");
         characters.spawn("housemate", housematePosition);

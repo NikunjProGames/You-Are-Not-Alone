@@ -11,7 +11,7 @@ Play: [YOU ARE NOT ALONE](https://nikunjprogames.github.io/You-Are-Not-Alone/)
 ## Controls
 
 - **Move:** W A S D or arrow keys
-- **Look:** click the game to capture the mouse and aim by moving it; hold and drag to look if pointer lock is unavailable
+- **Look:** hold the left mouse button and drag over the game
 - **Interact:** E
 - **Continue dialogue:** Enter or use the on-screen button
 - **Run:** hold Shift
