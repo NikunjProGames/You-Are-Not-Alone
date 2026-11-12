@@ -68,7 +68,7 @@ The protagonist, first strange person/friend, and tenant are distinct, authored 
 
 Progress from normality to abnormality, uncertainty, suspicion, investigation, danger, urgency, confrontation, transformation, and revelation. Use silence, environmental audio, restrained lighting, framing, character reactions, and selective scares; avoid graphic violence and constant jumpscares.
 
-Provide readable interaction prompts, subtitles, adjustable audio, and controls suitable for keyboard plus click-and-drag mouse look on desktop and touch. Reduced quality settings should preserve the desktop visual target rather than dictate it.
+Provide readable interaction prompts, subtitles, adjustable audio, and controls suitable for keyboard plus pointer-lock mouse look with drag fallback on desktop and touch. Reduced quality settings should preserve the desktop visual target rather than dictate it.
 
 Keep the current objective short and action-focused. A separate Hint action should add a concrete, non-spoiling clue about where to look or what to inspect; when rewarded ads are unavailable, reveal that same clue free. A door that controls access to a room must not close while the player is inside that room or its threshold.
 

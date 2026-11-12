@@ -34,7 +34,7 @@
 - Audio and lighting transitions exposed to events.
 - Reusable cinematic camera sequencing with safe input handoff.
 - Versioned local checkpoint save, validation, and recovery behavior.
-- Desktop keyboard movement with click-and-drag mouse look, plus practical mobile movement/look/interaction.
+- Desktop keyboard movement with pointer-lock mouse look and click-and-drag fallback, plus practical mobile movement/look/interaction.
 
 ### Foundation acceptance criteria
 

@@ -58,6 +58,23 @@ export class Player {
       if (!this.lookEnabled) return;
       if (this.locked) this.rotate(event.movementX, event.movementY);
     });
+    window.addEventListener("pointermove", (event) => {
+      if (
+        !this.lookEnabled ||
+        this.locked ||
+        event.pointerId !== this.lookPointer
+      ) {
+        return;
+      }
+      const dx = event.clientX - this.lastTouchX;
+      const dy = event.clientY - this.lastTouchY;
+      this.lastTouchX = event.clientX;
+      this.lastTouchY = event.clientY;
+      const sensitivity = event.pointerType === "mouse" ? 1 : 1.7;
+      this.rotate(dx * sensitivity, dy * sensitivity);
+    });
+    window.addEventListener("pointerup", this.releaseLook);
+    window.addEventListener("pointercancel", this.releaseLook);
 
     window.addEventListener("resize", () => this.updateInputMode());
     this.setupTouchControls();
@@ -148,11 +165,15 @@ export class Player {
 
   requestPointerLock(): void {
     if (!this.isDesktopInput() || this.locked) return;
-    const request = this.canvas.requestPointerLock();
-    if (request instanceof Promise) {
-      void request.catch((error: unknown) => {
-        console.info("Pointer lock unavailable; free-cursor mouse look remains active.", error);
-      });
+    try {
+      const request = this.canvas.requestPointerLock();
+      if (request instanceof Promise) {
+        void request.catch((error: unknown) => {
+          console.info("Pointer lock unavailable; drag-to-look remains active.", error);
+        });
+      }
+    } catch (error) {
+      console.info("Pointer lock unavailable; drag-to-look remains active.", error);
     }
   }
 
@@ -207,23 +228,19 @@ export class Player {
       this.lookPointer = event.pointerId;
       this.lastTouchX = event.clientX;
       this.lastTouchY = event.clientY;
-      this.canvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      try {
+        this.canvas.setPointerCapture(event.pointerId);
+      } catch (error) {
+        console.info("Pointer capture unavailable; drag-to-look will track while the pointer stays over the page.", error);
+      }
+      if (event.pointerType === "mouse") this.requestPointerLock();
     });
-    this.canvas.addEventListener("pointermove", (event) => {
-      if (event.pointerId !== this.lookPointer) return;
-      const dx = event.clientX - this.lastTouchX;
-      const dy = event.clientY - this.lastTouchY;
-      this.lastTouchX = event.clientX;
-      this.lastTouchY = event.clientY;
-      const sensitivity = event.pointerType === "mouse" ? 1 : 1.7;
-      this.rotate(dx * sensitivity, dy * sensitivity);
-    });
-    const releaseLook = (event: PointerEvent) => {
-      if (event.pointerId === this.lookPointer) this.lookPointer = null;
-    };
-    this.canvas.addEventListener("pointerup", releaseLook);
-    this.canvas.addEventListener("pointercancel", releaseLook);
   }
+
+  private readonly releaseLook = (event: PointerEvent): void => {
+    if (event.pointerId === this.lookPointer) this.lookPointer = null;
+  };
 
   private updateJoystick(event: PointerEvent): void {
     const bounds = this.joystick.getBoundingClientRect();
