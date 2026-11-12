@@ -16,7 +16,6 @@ export interface HouseDemo {
   canOccupy: (x: number, z: number, floorHeight: number) => boolean;
   floorAt: (x: number, z: number, currentHeight: number) => number | null;
   setMood: (mood: AtmosphereMood) => void;
-  setDaylight: (daytime: boolean) => void;
   setBlackout: (active: boolean) => void;
   setDoorOpen: (open: boolean) => void;
   setBackRoomDoorOpen: (open: boolean) => void;
@@ -92,11 +91,10 @@ export function buildHouseDemo(
   scene.add(windowLight);
   const hemiIntensity = hemi.intensity;
   const windowLightIntensity = windowLight.intensity;
-  let daytime = false;
   let blackedOut = false;
-  const applyDayLighting = (): void => {
-    hemi.intensity = blackedOut ? 0 : daytime ? 1.36 : hemiIntensity;
-    windowLight.intensity = blackedOut ? 0 : daytime ? 2.15 : windowLightIntensity;
+  const applyBlackoutLighting = (): void => {
+    hemi.intensity = blackedOut ? 0 : hemiIntensity;
+    windowLight.intensity = blackedOut ? 0 : windowLightIntensity;
   };
   const ceilingLight = new THREE.PointLight("#d9b78a", 9, 12, 2);
   ceilingLight.position.set(1.4, 2.75, 0.5);
@@ -169,18 +167,7 @@ export function buildHouseDemo(
   addUpperStory(scene, plaster, darkWood, wood, cream, upperObstacles);
   addUpperMysteryWing(scene, plaster, darkWood, floor, upperObstacles);
   addUpperTenantRoom(scene, plaster, darkWood, wood, cream, floor, upperObstacles);
-  const setExteriorDaylight = addExterior(scene, darkWood, wood, cream, brass, obstacles, windObjects);
-  const setDaylight = (active: boolean): void => {
-    if (daytime === active) return;
-    daytime = active;
-    scene.background = new THREE.Color(active ? "#9dbdca" : "#111a20");
-    sceneFog.color.set(active ? "#a8c3cc" : "#141d21");
-    hemi.color.set(active ? "#dceaf0" : "#b2c5d0");
-    hemi.groundColor.set(active ? "#776d55" : "#3a3327");
-    windowLight.color.set(active ? "#fff0d3" : "#9bb2c1");
-    setExteriorDaylight(active);
-    applyDayLighting();
-  };
+  addExterior(scene, darkWood, wood, cream, brass, obstacles, windObjects);
 
   addBox(scene, floor, 4.2, 0.18, 6.0, 0, -0.12, -23.2, true);
   addBox(scene, plaster, 0.16, 3.25, 6.0, -2.15, 1.55, -23.2, true);
@@ -653,11 +640,10 @@ export function buildHouseDemo(
       );
     },
     setMood: (mood) => environment.setMood(mood),
-    setDaylight,
     setBlackout: (active) => {
       blackedOut = active;
       environment.setBlackout(active);
-      applyDayLighting();
+      applyBlackoutLighting();
     },
     setDoorOpen: (open) => door.setOpen(open),
     setEntryDoorOpen: (open) => entryDoor.setOpen(open),
@@ -949,7 +935,7 @@ function addExterior(
   brass: THREE.Material,
   obstacles: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }>,
   windObjects: Array<{ object: THREE.Object3D; base: number; phase: number; amount: number }>,
-): (daytime: boolean) => void {
+): void {
   const lawn = new THREE.MeshStandardMaterial({ color: "#37423a", roughness: 1 });
   const path = new THREE.MeshStandardMaterial({ color: "#71685b", roughness: 0.98 });
   const leaves = new THREE.MeshStandardMaterial({ color: "#455640", roughness: 1 });
@@ -1192,12 +1178,6 @@ function addExterior(
     addBox(scene, darkWood, 0.22, 6.1, 0.22, x, 3.12, 6.1, true);
   }
   addBox(scene, darkWood, 12.0, 0.2, 0.24, 0, 6.17, 6.02, true);
-
-  return (daytime) => {
-    starField.visible = !daytime;
-    moon.visible = !daytime;
-    moonLight.visible = !daytime;
-  };
 }
 
 function addDiningArea(

@@ -683,9 +683,6 @@ export class Game {
 
   private renderStory(snapshot: Readonly<StorySnapshot>): void {
     this.dayLabel.textContent = `DAY ${snapshot.day} · ${PHASE_LABEL[snapshot.phase]}`;
-    this.world.setDaylight(
-      snapshot.day === 2 && (snapshot.phase === "morning" || snapshot.phase === "afternoon"),
-    );
   }
 
   private setObjective(text: string, destination?: THREE.Vector3): void {
