@@ -409,10 +409,12 @@ export class Game {
     this.continueButton.hidden = !this.saves.hasSave();
     this.startButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
+      this.player.requestPointerLock();
       void this.beginNewGame();
     });
     this.continueButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
+      this.player.requestPointerLock();
       void this.continueGame();
     });
     this.pauseButton.addEventListener("click", () => this.pause());
@@ -815,6 +817,7 @@ export class Game {
     }
     this.player.setLookEnabled(true);
     this.player.focusCanvas();
+    this.player.requestPointerLock();
   }
 
   private revealHint(isFreeFallback: boolean): void {

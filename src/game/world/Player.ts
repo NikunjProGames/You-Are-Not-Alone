@@ -26,6 +26,9 @@ export class Player {
   private readonly knob: HTMLElement;
   private joystickPointer: number | null = null;
   private lookPointer: number | null = null;
+  private draggingMouse = false;
+  private lastMouseX = 0;
+  private lastMouseY = 0;
   private lastTouchX = 0;
   private lastTouchY = 0;
 
@@ -47,21 +50,50 @@ export class Player {
       this.keys.add(event.code);
     });
     window.addEventListener("keyup", (event) => this.keys.delete(event.code));
-    window.addEventListener("blur", () => this.keys.clear());
+    window.addEventListener("blur", () => {
+      this.keys.clear();
+      this.draggingMouse = false;
+      this.lookPointer = null;
+    });
     document.addEventListener("pointerlockchange", () => {
       const wasLocked = this.locked;
       this.locked = document.pointerLockElement === this.canvas;
       this.mobileControls.hidden = this.isDesktopInput();
       if (wasLocked && !this.locked && this.lookEnabled) this.onPointerLockLost();
     });
+    window.addEventListener("mousedown", (event) => {
+      if (
+        !this.lookEnabled ||
+        event.button !== 0 ||
+        event.target !== this.canvas
+      ) {
+        return;
+      }
+      this.draggingMouse = true;
+      this.lastMouseX = event.clientX;
+      this.lastMouseY = event.clientY;
+      event.preventDefault();
+      this.requestPointerLock();
+    });
+    window.addEventListener("mouseup", (event) => {
+      if (event.button === 0) this.draggingMouse = false;
+    });
     window.addEventListener("mousemove", (event) => {
       if (!this.lookEnabled) return;
       if (this.locked) this.rotate(event.movementX, event.movementY);
+      else if (this.draggingMouse) {
+        const dx = event.clientX - this.lastMouseX;
+        const dy = event.clientY - this.lastMouseY;
+        this.lastMouseX = event.clientX;
+        this.lastMouseY = event.clientY;
+        this.rotate(dx, dy);
+      }
     });
     window.addEventListener("pointermove", (event) => {
       if (
         !this.lookEnabled ||
         this.locked ||
+        event.pointerType === "mouse" ||
         event.pointerId !== this.lookPointer
       ) {
         return;
@@ -164,7 +196,7 @@ export class Player {
   }
 
   requestPointerLock(): void {
-    if (!this.isDesktopInput() || this.locked) return;
+    if (!window.matchMedia("(pointer: fine)").matches || this.locked) return;
     try {
       const request = this.canvas.requestPointerLock();
       if (request instanceof Promise) {
@@ -183,13 +215,17 @@ export class Player {
 
   setLookEnabled(enabled: boolean): void {
     this.lookEnabled = enabled;
-    if (!enabled) this.lookPointer = null;
+    if (!enabled) {
+      this.lookPointer = null;
+      this.draggingMouse = false;
+    }
   }
 
   resetInput(): void {
     this.keys.clear();
     this.joystickPointer = null;
     this.lookPointer = null;
+    this.draggingMouse = false;
     this.touchX = 0;
     this.touchY = 0;
     this.knob.style.transform = "translate(0, 0)";
@@ -220,9 +256,11 @@ export class Player {
 
     this.canvas.addEventListener("pointerdown", (event) => {
       if (!this.lookEnabled || this.lookPointer !== null) return;
-      if (event.pointerType === "mouse") {
-        if (!this.isDesktopInput() || event.button !== 0) return;
-      } else if (this.isDesktopInput() || event.clientX < window.innerWidth * 0.35) {
+      if (
+        event.pointerType === "mouse" ||
+        (this.isDesktopInput() && event.pointerType !== "touch") ||
+        event.clientX < window.innerWidth * 0.35
+      ) {
         return;
       }
       this.lookPointer = event.pointerId;
@@ -232,9 +270,11 @@ export class Player {
       try {
         this.canvas.setPointerCapture(event.pointerId);
       } catch (error) {
-        console.info("Pointer capture unavailable; drag-to-look will track while the pointer stays over the page.", error);
+        console.info(
+          "Pointer capture unavailable; drag-to-look will track while the pointer stays over the page.",
+          error,
+        );
       }
-      if (event.pointerType === "mouse") this.requestPointerLock();
     });
   }
 
