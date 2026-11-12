@@ -484,7 +484,6 @@ export class Game {
 
       this.cinematics.update(delta);
       this.episode.update(delta);
-      this.environment.update(delta, this.elapsed);
     }
     this.hud.classList.toggle("is-cinematic-active", this.cinematics.active);
     const renderInterval = this.isPlaying

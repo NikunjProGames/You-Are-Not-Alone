@@ -4,7 +4,6 @@ export type AtmosphereMood = "settled" | "uneasy";
 
 export class EnvironmentSystem {
   private mood: AtmosphereMood = "settled";
-  private flickerTime = 0;
   private blackedOut = false;
   private readonly fixtures: THREE.PointLight[] = [];
 
@@ -13,7 +12,11 @@ export class EnvironmentSystem {
   ) {}
 
   addPractical(light: THREE.PointLight): void {
+    if (typeof light.userData.baseIntensity !== "number") {
+      throw new Error("A practical light must define its base intensity.");
+    }
     this.fixtures.push(light);
+    light.intensity = this.blackedOut ? 0 : light.userData.baseIntensity;
   }
 
   setMood(mood: AtmosphereMood): void {
@@ -24,17 +27,8 @@ export class EnvironmentSystem {
 
   setBlackout(active: boolean): void {
     this.blackedOut = active;
-  }
-
-  update(delta: number, elapsed: number): void {
-    this.flickerTime += delta;
-    const isUneasy = this.mood === "uneasy";
-    const pulse = isUneasy ? Math.sin(elapsed * 2.4) * 0.025 : 0;
-    this.fixtures.forEach((light, index) => {
-      const flicker = isUneasy && index === 0 && this.flickerTime > 10
-        ? Math.max(0.82, 1 - Math.max(0, Math.sin(elapsed * 19)) * 0.11)
-        : 1;
-      light.intensity = this.blackedOut ? 0 : light.userData.baseIntensity * flicker + pulse;
-    });
+    for (const light of this.fixtures) {
+      light.intensity = active ? 0 : light.userData.baseIntensity;
+    }
   }
 }
