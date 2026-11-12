@@ -28,8 +28,6 @@ export class Player {
   private lookPointer: number | null = null;
   private lastTouchX = 0;
   private lastTouchY = 0;
-  private lastMouseX: number | null = null;
-  private lastMouseY: number | null = null;
 
   constructor(canvas: HTMLCanvasElement, onLookChange: () => void, onPointerLockLost: () => void) {
     this.canvas = canvas;
@@ -59,19 +57,9 @@ export class Player {
     window.addEventListener("mousemove", (event) => {
       if (!this.lookEnabled) return;
       if (this.locked) this.rotate(event.movementX, event.movementY);
-      else if (this.isDesktopInput()) {
-        const deltaX = this.lastMouseX === null ? 0 : event.clientX - this.lastMouseX;
-        const deltaY = this.lastMouseY === null ? 0 : event.clientY - this.lastMouseY;
-        this.lastMouseX = event.clientX;
-        this.lastMouseY = event.clientY;
-        this.rotate(deltaX, deltaY);
-      }
     });
 
     window.addEventListener("resize", () => this.updateInputMode());
-    this.canvas.addEventListener("click", () => {
-      if (this.lookEnabled && this.isDesktopInput()) this.requestPointerLock();
-    });
     this.setupTouchControls();
     this.updateInputMode();
   }
@@ -174,8 +162,7 @@ export class Player {
 
   setLookEnabled(enabled: boolean): void {
     this.lookEnabled = enabled;
-    this.lastMouseX = null;
-    this.lastMouseY = null;
+    if (!enabled) this.lookPointer = null;
   }
 
   resetInput(): void {
@@ -211,7 +198,12 @@ export class Player {
     this.joystick.addEventListener("pointercancel", releaseJoystick);
 
     this.canvas.addEventListener("pointerdown", (event) => {
-      if (this.isDesktopInput() || event.clientX < window.innerWidth * 0.35) return;
+      if (!this.lookEnabled || this.lookPointer !== null) return;
+      if (event.pointerType === "mouse") {
+        if (!this.isDesktopInput() || event.button !== 0) return;
+      } else if (this.isDesktopInput() || event.clientX < window.innerWidth * 0.35) {
+        return;
+      }
       this.lookPointer = event.pointerId;
       this.lastTouchX = event.clientX;
       this.lastTouchY = event.clientY;
@@ -223,7 +215,8 @@ export class Player {
       const dy = event.clientY - this.lastTouchY;
       this.lastTouchX = event.clientX;
       this.lastTouchY = event.clientY;
-      this.rotate(dx * 1.7, dy * 1.7);
+      const sensitivity = event.pointerType === "mouse" ? 1 : 1.7;
+      this.rotate(dx * sensitivity, dy * sensitivity);
     });
     const releaseLook = (event: PointerEvent) => {
       if (event.pointerId === this.lookPointer) this.lookPointer = null;

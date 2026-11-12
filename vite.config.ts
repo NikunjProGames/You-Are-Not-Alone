@@ -7,6 +7,16 @@ export default defineConfig(({ command, mode }) => ({
   publicDir: mode === "playgama" ? false : "public",
   plugins: [
     playgamaBridge({ mode: "local" }),
+    {
+      name: "defer-playgama-bridge-runtime",
+      enforce: "post",
+      transformIndexHtml(html: string) {
+        return html.replace(
+          /<script(?=[^>]*src=["'][^"']*playgama-bridge\.js["'])[^>]*>/,
+          (tag) => tag.includes(" defer") ? tag : tag.replace("<script", "<script defer"),
+        );
+      },
+    },
     ...(mode === "playgama"
       ? [{
           name: "remove-site-information-from-playgama-build",
@@ -20,6 +30,7 @@ export default defineConfig(({ command, mode }) => ({
           },
           generateBundle(this: import("rollup").PluginContext) {
             for (const fileName of [
+              "title-background.svg",
               "playgama-bridge-config.json",
               "PLAYGAMA-BRIDGE-LICENSE.txt",
               "THIRD-PARTY-NOTICES.txt",

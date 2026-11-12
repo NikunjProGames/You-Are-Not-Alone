@@ -69,18 +69,24 @@
 
       <section id="title-screen" class="screen title-screen">
         <div class="title-backdrop" aria-hidden="true">
-          <div class="title-window"><span></span><span></span><span></span></div>
-          <div class="title-shadow"></div>
-          <div class="title-floor"></div>
-          <div class="title-dust"></div>
+          <img src="./title-background.svg" alt="" />
+        </div>
+        <div id="game-loader" class="game-loader" role="status" aria-live="polite">
+          <div class="loader-card">
+            <p class="eyebrow">A PLEYZ ORIGINAL</p>
+            <h2>The house is waking.</h2>
+            <p id="loading-status">Preparing the playable world...</p>
+            <div class="loader-track" aria-hidden="true"><span></span></div>
+            <button id="loader-retry" class="text-button" type="button" hidden>Try again</button>
+          </div>
         </div>
         <div class="title-copy">
           <p class="eyebrow">A PLEYZ ORIGINAL</p>
           <h1>YOU ARE<br /><span>NOT ALONE</span></h1>
           <p class="title-subtitle">Some houses remember who lived in them.</p>
           <div class="title-actions">
-            <button id="start-button" class="primary-button">Enter the house <span>↗</span></button>
-            <button id="continue-button" class="text-button" hidden>Continue</button>
+            <button id="start-button" class="primary-button" disabled>Enter the house <span>↗</span></button>
+            <button id="continue-button" class="text-button" disabled hidden>Continue</button>
           </div>
           <p class="title-footnote">A first-person psychological horror experience</p>
         </div>
@@ -110,7 +116,7 @@
         </div>
         <div id="crosshair" class="crosshair" aria-hidden="true"><span></span><i></i></div>
         <div id="toast" class="toast" role="status" hidden></div>
-        <div class="controls-hint">WASD MOVE <span>·</span> MOVE MOUSE LOOK <span>·</span> E INTERACT</div>
+        <div class="controls-hint">WASD MOVE <span>·</span> DRAG MOUSE LOOK <span>·</span> E INTERACT</div>
         <div id="mobile-controls" class="mobile-controls" hidden>
           <div id="move-pad" class="move-pad" aria-label="Movement joystick"><div class="move-knob"></div></div>
           <button id="mobile-interact" class="mobile-interact" aria-label="Interact">E</button>

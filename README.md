@@ -11,7 +11,7 @@ Play: [YOU ARE NOT ALONE](https://nikunjprogames.github.io/You-Are-Not-Alone/)
 ## Controls
 
 - **Move:** W A S D or arrow keys
-- **Look:** move the mouse; click the game to recapture it after opening a menu
+- **Look:** click and drag the mouse over the game
 - **Interact:** E
 - **Continue dialogue:** Enter or use the on-screen button
 - **Run:** hold Shift
@@ -41,3 +41,5 @@ For earnings and reports, sign in to the [Playgama developer dashboard](https://
 ## Project notes
 
 Episode One and its reusable game systems are documented in [GAME_DESIGN.md](./GAME_DESIGN.md), [PLAN.md](./PLAN.md), and [DEVELOPMENT_STATUS.md](./DEVELOPMENT_STATUS.md). Environment geometry, character models, and the sound bed are currently procedural; they are not licensed production-art assets, and full-playthrough runtime and navigation QA are still in progress.
+
+The title screen uses a small, original SVG illustration. The game code and procedural world are loaded behind a branded startup screen after the title first appears; there is no separate downloadable 3D asset pack or fabricated percentage progress.

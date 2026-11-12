@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="room" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#080a0b"/>
+      <stop offset=".48" stop-color="#141a1c"/>
+      <stop offset=".78" stop-color="#283035"/>
+      <stop offset="1" stop-color="#111719"/>
+    </linearGradient>
+    <radialGradient id="windowGlow" cx=".72" cy=".49" r=".48">
+      <stop stop-color="#9b8870" stop-opacity=".72"/>
+      <stop offset=".38" stop-color="#526169" stop-opacity=".36"/>
+      <stop offset="1" stop-color="#0a0c0d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="window" x1=".2" y1="0" x2=".8" y2="1">
+      <stop stop-color="#89989a"/>
+      <stop offset=".52" stop-color="#46545a"/>
+      <stop offset="1" stop-color="#1b2428"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#292a28" stop-opacity="0"/>
+      <stop offset="1" stop-color="#050606"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#050606" stop-opacity=".3"/>
+      <stop offset=".48" stop-color="#050606" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#050606" stop-opacity=".48"/>
+    </linearGradient>
+    <pattern id="floorboards" width="100" height="70" patternUnits="userSpaceOnUse">
+      <path d="M0 1h100M18 1v68M76 1v68" fill="none" stroke="#a79b83" stroke-opacity=".09" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <path fill="url(#room)" d="M0 0h1920v1080H0z"/>
+  <path fill="url(#windowGlow)" d="M0 0h1920v1080H0z"/>
+  <path fill="#0b1012" d="M770 118 1308 56l167 650-700 31z" opacity=".8"/>
+  <path fill="url(#window)" d="m807 151 450-49 124 533-550 41z" opacity=".66"/>
+  <path d="m1035 128 111 547M827 440l548-57" fill="none" stroke="#111719" stroke-width="24" opacity=".8"/>
+  <path d="m1219 105 145 510" fill="none" stroke="#c1c8c0" stroke-opacity=".08" stroke-width="26"/>
+  <path fill="#090c0d" d="M0 602h335l108 53v425H0z"/>
+  <path fill="#171b1b" d="m325 648 235 9v241l-235-16z"/>
+  <path fill="#0b0e0e" d="m349 674 188 9v165l-188-12z"/>
+  <path fill="#282d2c" d="M0 853h1920v227H0z" opacity=".42"/>
+  <path fill="url(#floor)" d="M0 475h1920v605H0z"/>
+  <path fill="url(#floorboards)" d="M380 670h1540v410H380z" opacity=".7"/>
+  <path fill="#070909" d="m1480 370 87-84 91 5 61 74 40 251 114 464h-525l127-478z" opacity=".94"/>
+  <path fill="#080a0a" d="m1510 330 56-94 95-9 68 70 9 103-210 16z"/>
+  <path fill="#9d2830" d="m1569 315 13-9 8 14-14 9zm76-8 13-7 8 14-13 9z" opacity=".65"/>
+  <path fill="url(#shade)" d="M0 0h1920v1080H0z"/>
+  <path fill="#d2c3a9" d="M189 161h2v2h-2zm341 337h2v2h-2zm1039-228h2v2h-2zm142 442h2v2h-2zM268 828h2v2h-2zm1266-646h2v2h-2z" opacity=".35"/>
+</svg>

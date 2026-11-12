@@ -640,12 +640,8 @@ export class EpisodeOne {
           story.setFlag("episode.housemateTalks", talks + 1);
           story.setFlag("episode.housemateMet", true);
           this.options.setObjective(
-            story.hasFlag("episode.tenantAskedAboutAren")
-              ? "Find Zayan in the laundry room and see what he was cleaning."
-              : "Ask the tenant who the person was, then return upstairs.",
-            story.hasFlag("episode.tenantAskedAboutAren")
-              ? OBJECTIVE_DESTINATIONS.laundry
-              : OBJECTIVE_DESTINATIONS.reception,
+            "Find Zayan in the laundry room and see what he was cleaning.",
+            OBJECTIVE_DESTINATIONS.laundry,
           );
         },
       });
@@ -884,29 +880,6 @@ export class EpisodeOne {
               },
             });
           });
-        },
-      });
-      return;
-    }
-    if (
-      story.hasFlag("episode.firstEncounterSeen") &&
-      !story.hasFlag("episode.tenantAskedAboutAren") &&
-      !story.hasFlag("episode.tenantLedger") &&
-      !story.hasFlag("episode.tenantRecording")
-    ) {
-      this.say({
-        id: "episode-ask-tenant-about-aren",
-        lines: [
-          { speaker: "You", text: "The person near the entrance saw me and hurried away. Who is he?" },
-          { speaker: "Tenant", text: "Zayan. He has been here longer than most. Keep to your room and you will have no trouble." },
-          { speaker: "You", text: "He looked frightened." },
-          { speaker: "Tenant", text: "Zayan enjoys making people feel watched. Go upstairs; dinner will be set out later." },
-        ],
-        onComplete: () => {
-          story.setFlag("episode.tenantAskedAboutAren", true);
-          story.setFlag("episode.tenantTalks", count + 1);
-          this.options.setObjective("Find Zayan in the laundry room and see what he was cleaning.", OBJECTIVE_DESTINATIONS.laundry);
-          this.options.saveCheckpoint();
         },
       });
       return;

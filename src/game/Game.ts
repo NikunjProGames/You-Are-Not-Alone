@@ -34,10 +34,6 @@ const OBJECTIVE_COPY: Record<string, { label: string; hint: string }> = {
     label: "Check in at reception.",
     hint: "Look for the tenant in the front hall.",
   },
-  "The stranger hurried inside. Ask the tenant who they are.": {
-    label: "Ask about the stranger.",
-    hint: "The tenant is near reception; ask who just came in.",
-  },
   "Find Zayan in the dining area. Ask why the tenant treats him this way.": {
     label: "Find Zayan in the dining room.",
     hint: "Head through the central hall toward the dining table.",
@@ -413,12 +409,10 @@ export class Game {
     this.continueButton.hidden = !this.saves.hasSave();
     this.startButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
-      this.player.requestPointerLock();
       void this.beginNewGame();
     });
     this.continueButton.addEventListener("click", () => {
       this.player.setLookEnabled(true);
-      this.player.requestPointerLock();
       void this.continueGame();
     });
     this.pauseButton.addEventListener("click", () => this.pause());
@@ -572,7 +566,13 @@ export class Game {
         new THREE.Vector3(-4.15, 5.18, -4.82),
       );
     } else if (typeof savedObjective === "string") {
-      this.setObjective(savedObjective, parseObjectiveTarget(snapshot.flags["episode.objectiveTarget"]));
+      const migratedObjective = savedObjective === "Ask the tenant who the person was, then return upstairs."
+        ? "Find Zayan in the laundry room and see what he was cleaning."
+        : savedObjective;
+      const migratedTarget = migratedObjective === savedObjective
+        ? parseObjectiveTarget(snapshot.flags["episode.objectiveTarget"])
+        : new THREE.Vector3(-4.9, 0, -6.2);
+      this.setObjective(migratedObjective, migratedTarget);
     }
     await this.enterGame();
     if (!this.story.hasFlag("episode.prologueComplete")) this.episode.start();
@@ -690,6 +690,9 @@ export class Game {
 
   private renderStory(snapshot: Readonly<StorySnapshot>): void {
     this.dayLabel.textContent = `DAY ${snapshot.day} · ${PHASE_LABEL[snapshot.phase]}`;
+    this.world.setDaylight(
+      snapshot.day === 2 && (snapshot.phase === "morning" || snapshot.phase === "afternoon"),
+    );
   }
 
   private setObjective(text: string, destination?: THREE.Vector3): void {
@@ -812,7 +815,6 @@ export class Game {
     }
     this.player.setLookEnabled(true);
     this.player.focusCanvas();
-    this.player.requestPointerLock();
   }
 
   private revealHint(isFreeFallback: boolean): void {
